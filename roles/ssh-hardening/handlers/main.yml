@@ -1,0 +1,8 @@
+---
+# handlers/main.yml for ssh-hardening role
+
+- name: Restart SSH service
+  service:
+    name: ssh
+    state: restarted
+  # Restart the SSH service when configuration changes are made
