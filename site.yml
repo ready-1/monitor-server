@@ -1,0 +1,26 @@
+---
+# Main Ansible playbook for NetAuto Server provisioning
+# This is the primary entry point for all server configuration tasks
+
+- name: NetAuto Server Provisioning
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  # Pre-tasks run before roles and main tasks
+  pre_tasks:
+    - name: Display provisioning start message
+      debug:
+        msg: "Starting NetAuto Server provisioning for {{ ansible_hostname }}"
+  
+  # Roles section for modular task organization (empty for now)
+  roles:
+    # Future roles will be added here
+    # Example:
+    # - common
+    # - monitoring
+    # - network-tools
+  
+  # Main tasks section (empty for now, will use roles)
+  tasks:
+    # Individual tasks can be added here if not using roles
