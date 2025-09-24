@@ -106,3 +106,44 @@ To add new functionality:
 - Check SSH key permissions (should be 600)
 - Verify network connectivity between control node and target hosts
 
+## Ansible Vault Integration
+
+This project now uses Ansible Vault for secure management of sensitive data.
+
+### Security Benefits
+
+1. **No Plaintext Exposure**: Passwords are never stored in plaintext in version control.
+2. **Centralized Secret Management**: All sensitive data is managed through Ansible Vault.
+3. **Encrypted at Rest**: Vault variables are encrypted when stored.
+4. **Access Control**: Vault password controls access to all secrets.
+
+### Setup Instructions
+
+1. Create a vault password file (never commit this to version control):
+   ```
+   echo "your_vault_master_password" > .vault_password
+   chmod 600 .vault_password
+   ```
+
+2. Edit the vault file to set the real sudo password:
+   ```
+   ansible-vault edit group_vars/all/vault.yml
+   ```
+
+3. In the vault file, set the `vault_become_password` variable:
+   ```yaml
+   vault_become_password: 'your_actual_sudo_password'
+   ```
+
+### Usage
+
+- The `inventory.ini` file now uses the vaulted `ansible_become_pass` variable.
+- When running playbooks, Ansible will automatically use the vault password file specified in `ansible.cfg`.
+
+### Best Practices
+
+- Never commit the `.vault_password` file to version control.
+- Regularly rotate the vault password and update team members securely.
+- Use different vault passwords for different environments (dev, staging, prod).
+
+For more information on Ansible Vault, refer to the [official documentation](https://docs.ansible.com/ansible/latest/user_guide/vault.html).
