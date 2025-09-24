@@ -26,7 +26,8 @@ AllowUsers {{ ssh_allow_users | default('monitor') }}
 X11Forwarding no
 
 # Limit the number of authentication attempts to prevent brute force attacks
-MaxAuthTries 3
+# while accommodating clients with multiple SSH keys
+MaxAuthTries {{ ssh_max_auth_tries | default(8) }}
 
 # Additional recommended security settings
 

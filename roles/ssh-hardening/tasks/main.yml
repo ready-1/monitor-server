@@ -75,3 +75,15 @@
   tags: 
     - ufw
     - firewall
+
+# Force handlers to run before validation
+- name: Flush handlers
+  meta: flush_handlers
+  tags: validate
+
+# Include validation tasks
+- name: Include validation tasks
+  include_tasks: validate.yml
+  tags:
+    - validate
+    - always

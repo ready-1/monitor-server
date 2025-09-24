@@ -1,0 +1,108 @@
+---
+# Validation tasks for ssh-hardening role
+# These tasks verify SSH hardening and UFW configuration
+
+# SSH Configuration Validation
+- name: Validate SSH config file PermitRootLogin setting
+  shell: grep -i "^PermitRootLogin" /etc/ssh/sshd_config | awk '{print $2}'
+  register: ssh_config_file_check
+  failed_when: ssh_config_file_check.stdout != 'no'
+  changed_when: false
+  tags: validate
+
+- name: Validate SSH PermitRootLogin is disabled (runtime check)
+  shell: sshd -T | grep -i permitrootlogin | awk '{print $2}'
+  register: ssh_root_login_check
+  failed_when: ssh_root_login_check.stdout != 'no'
+  changed_when: false
+  tags: validate
+
+- name: Validate SSH PasswordAuthentication is disabled
+  shell: sshd -T | grep -i passwordauthentication | awk '{print $2}'
+  register: ssh_password_auth_check
+  failed_when: ssh_password_auth_check.stdout != 'no'
+  changed_when: false
+  tags: validate
+
+- name: Validate SSH PubkeyAuthentication is enabled
+  shell: sshd -T | grep -i pubkeyauthentication | awk '{print $2}'
+  register: ssh_pubkey_auth_check
+  failed_when: ssh_pubkey_auth_check.stdout != 'yes'
+  changed_when: false
+  tags: validate
+
+- name: Validate SSH MaxAuthTries is set to 8
+  shell: sshd -T | grep -i maxauthtries | awk '{print $2}'
+  register: ssh_max_auth_tries_check
+  failed_when: ssh_max_auth_tries_check.stdout != (ssh_max_auth_tries | default(8) | string)
+  changed_when: false
+  tags: validate
+
+- name: Validate SSH X11Forwarding is disabled
+  shell: sshd -T | grep -i x11forwarding | awk '{print $2}'
+  register: ssh_x11_forwarding_check
+  failed_when: ssh_x11_forwarding_check.stdout != 'no'
+  changed_when: false
+  tags: validate
+
+# UFW Validation
+- name: Validate UFW is active
+  shell: ufw status | grep "Status:" | awk '{print $2}'
+  register: ufw_status_check
+  failed_when: ufw_status_check.stdout != 'active'
+  changed_when: false
+  tags: validate
+
+- name: Validate SSH port is allowed through UFW
+  shell: ufw status | grep "{{ ssh_port | default(22) }}/tcp" | grep "ALLOW"
+  register: ufw_ssh_allow_check
+  failed_when: ufw_ssh_allow_check.rc != 0
+  changed_when: false
+  tags: validate
+
+- name: Validate UFW default incoming policy is deny
+  shell: ufw status verbose | grep "Default:" | grep "deny (incoming)"
+  register: ufw_default_incoming_check
+  failed_when: ufw_default_incoming_check.rc != 0
+  changed_when: false
+  tags: validate
+
+- name: Validate UFW default outgoing policy is allow
+  shell: ufw status verbose | grep "Default:" | grep "allow (outgoing)"
+  register: ufw_default_outgoing_check
+  failed_when: ufw_default_outgoing_check.rc != 0
+  changed_when: false
+  tags: validate
+
+# Service Status Validation
+- name: Validate SSH service is running
+  shell: systemctl is-active ssh
+  register: ssh_service_active_check
+  failed_when: ssh_service_active_check.stdout != 'active'
+  changed_when: false
+  tags: validate
+
+- name: Validate SSH service is enabled
+  shell: systemctl is-enabled ssh
+  register: ssh_service_enabled_check
+  failed_when: ssh_service_enabled_check.stdout != 'enabled'
+  changed_when: false
+  tags: validate
+
+# Summary
+- name: Display validation summary
+  debug:
+    msg: "All SSH hardening and UFW configurations have been validated successfully!"
+  when: 
+    - ssh_root_login_check.stdout == 'no'
+    - ssh_password_auth_check.stdout == 'no'
+    - ssh_pubkey_auth_check.stdout == 'yes'
+    - ssh_max_auth_tries_check.stdout == (ssh_max_auth_tries | default(8) | string)
+    - ssh_x11_forwarding_check.stdout == 'no'
+    - ufw_status_check.stdout == 'active'
+    - ufw_ssh_allow_check.rc == 0
+    - ufw_default_incoming_check.rc == 0
+    - ufw_default_outgoing_check.rc == 0
+    - ssh_service_active_check.stdout == 'active'
+    - ssh_service_enabled_check.stdout == 'enabled'
+  tags: validate

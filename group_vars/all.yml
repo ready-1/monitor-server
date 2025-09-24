@@ -1,0 +1,12 @@
+---
+# Main variables file for all hosts
+# Non-sensitive variables are stored here
+
+# SSH Hardening Configuration
+ssh_port: 22
+ssh_allow_users: 'monitor'
+
+# System Configuration
+become_password: "{{ vault_become_password }}"
+
+# Add other general variables as needed

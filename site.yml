@@ -49,6 +49,7 @@
   # Roles section for modular task organization
   roles:
     - basic-utilities
+    - ssh-hardening
     # Future roles can be added here
     # Example:
     # - monitoring
