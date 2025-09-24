@@ -13,6 +13,38 @@
     - name: Display provisioning start message
       debug:
         msg: "Starting NetAuto Server provisioning for {{ ansible_hostname }}"
+    
+    # Validation task block
+    - name: Validate privilege escalation with Vault
+      block:
+        - name: Test sudo access with vault password
+          command: sudo whoami
+          register: privilege_test
+          changed_when: false
+          tags: validate-escalation
+        
+        - name: Assert privilege escalation successful
+          assert:
+            that:
+              - privilege_test.stdout == 'root'
+            success_msg: "✅ Privilege escalation successful - running as root"
+            fail_msg: "❌ Privilege escalation failed - not running as root"
+          tags: validate-escalation
+      
+      rescue:
+        - name: Handle privilege escalation failure
+          debug:
+            msg: |
+              ❌ Privilege escalation validation failed. Possible causes:
+              - Vault password file missing or incorrect
+              - Sudo configuration issues
+              - User lacks sudo privileges
+          tags: validate-escalation
+        
+        - name: Fail with descriptive message
+          fail:
+            msg: "Privilege escalation validation failed. Check vault password and sudo configuration."
+          tags: validate-escalation
   
   # Roles section for modular task organization
   roles:
