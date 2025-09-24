@@ -24,3 +24,54 @@
     state: started
     enabled: yes
   # Ensure SSH service is active and starts on boot
+
+# UFW (Uncomplicated Firewall) Configuration
+# UFW is a user-friendly frontend for managing iptables firewall rules
+# Benefits:
+# - Simple and intuitive rule management
+# - Debian/Ubuntu native solution
+# - Enhances system security with network-level protection
+
+# Note on task ordering:
+# SSH configuration is applied before UFW to prevent accidental lockouts.
+# This ensures SSH access remains available when firewall rules are applied.
+
+- name: Enable UFW firewall
+  community.general.ufw:
+    state: enabled
+  tags: 
+    - ufw
+    - firewall
+
+- name: Allow SSH access through firewall
+  community.general.ufw:
+    rule: allow
+    port: "{{ ssh_port | default(22) }}"
+    proto: tcp
+  tags: 
+    - ufw
+    - firewall
+
+- name: Set UFW default policy - deny incoming
+  community.general.ufw:
+    default: deny
+    direction: incoming
+  tags: 
+    - ufw
+    - firewall
+
+- name: Set UFW default policy - allow outgoing
+  community.general.ufw:
+    default: allow
+    direction: outgoing
+  tags: 
+    - ufw
+    - firewall
+
+# Ensure changes are applied
+- name: Reload UFW
+  community.general.ufw:
+    state: reloaded
+  tags: 
+    - ufw
+    - firewall
