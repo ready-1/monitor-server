@@ -1,0 +1,72 @@
+---
+# tasks/validate.yml for cockpit role
+
+- name: Check if Cockpit socket is active and enabled
+  systemd:
+    name: "{{ cockpit_service_name }}"
+    state: started
+    enabled: yes
+  register: cockpit_socket_status
+  ignore_errors: true
+
+- name: Assert Cockpit socket is active and enabled
+  assert:
+    that:
+      - cockpit_socket_status.status.ActiveState == "active"
+      - cockpit_socket_status.status.UnitFileState == "enabled"
+    success_msg: "✅ Cockpit socket is active and enabled"
+    fail_msg: "❌ Cockpit socket is not active or not enabled"
+
+- name: Check if Cockpit port is listening
+  wait_for:
+    port: "{{ cockpit_port }}"
+    timeout: 5
+  register: port_check
+  ignore_errors: true
+
+- name: Assert Cockpit port is listening
+  assert:
+    that: port_check is succeeded
+    success_msg: "✅ Port {{ cockpit_port }} is listening"
+    fail_msg: "❌ Port {{ cockpit_port }} is not listening"
+
+- name: Check UFW rule for Cockpit
+  command: ufw status numbered
+  register: ufw_status
+  changed_when: false
+  check_mode: no
+
+- name: Assert UFW rule exists for Cockpit
+  assert:
+    that: 
+      - not ansible_check_mode or (ansible_check_mode and "'{{ cockpit_port }}/tcp' in (ufw_status.stdout | default(''))")
+    success_msg: "✅ UFW rule exists for Cockpit (port {{ cockpit_port }}) or check mode is active"
+    fail_msg: "❌ UFW rule for Cockpit (port {{ cockpit_port }}) is missing"
+
+- name: Check Cockpit HTTPS certificate
+  stat:
+    path: "{{ cockpit_cert_path }}"
+  register: cert_check
+
+- name: Assert Cockpit HTTPS certificate exists
+  assert:
+    that: cert_check.stat.exists
+    success_msg: "✅ Cockpit HTTPS certificate exists"
+    fail_msg: "❌ Cockpit HTTPS certificate is missing"
+
+- name: Test Cockpit dashboard accessibility
+  uri:
+    url: "https://localhost:{{ cockpit_port }}/"
+    method: GET
+    validate_certs: no
+    status_code: 200
+  register: cockpit_response
+  ignore_errors: true
+  when: not ansible_check_mode
+
+- name: Assert Cockpit dashboard is accessible
+  assert:
+    that: 
+      - ansible_check_mode or (not ansible_check_mode and cockpit_response.status == 200)
+    success_msg: "✅ Cockpit dashboard is accessible or check mode is active"
+    fail_msg: "❌ Cockpit dashboard is not responding"

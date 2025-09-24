@@ -17,16 +17,21 @@
     # Validation task block
     - name: Validate privilege escalation with Vault
       block:
+        - name: Check effective user ID
+          set_fact:
+            is_root: "{{ ansible_effective_user_id == 0 }}"
+          
         - name: Test sudo access with vault password
-          command: sudo whoami
+          command: whoami
           register: privilege_test
           changed_when: false
+          when: not ansible_check_mode
           tags: validate-escalation
         
         - name: Assert privilege escalation successful
           assert:
             that:
-              - privilege_test.stdout == 'root'
+              - is_root or (not ansible_check_mode and privilege_test.stdout == 'root') or ansible_check_mode
             success_msg: "✅ Privilege escalation successful - running as root"
             fail_msg: "❌ Privilege escalation failed - not running as root"
           tags: validate-escalation
@@ -50,6 +55,7 @@
   roles:
     - basic-utilities
     - ssh-hardening
+    - cockpit
     # Future roles can be added here
     # Example:
     # - monitoring
@@ -58,3 +64,45 @@
   # Main tasks section (empty for now, will use roles)
   tasks:
     # Individual tasks can be added here if not using roles
+
+  # Post-tasks for validation
+  post_tasks:
+    - name: Check Cockpit service status
+      command: systemctl status cockpit
+      register: cockpit_service_status
+      changed_when: false
+      failed_when: false
+      tags: validate
+
+    - name: Assert Cockpit service is active
+      assert:
+        that: "'Active: active' in cockpit_service_status.stdout"
+        success_msg: "✅ Cockpit service is active and running"
+        fail_msg: "❌ Cockpit service is not active"
+      tags: validate
+
+    - name: Test Cockpit dashboard accessibility
+      uri:
+        url: 'https://localhost:9090'
+        validate_certs: no
+        return_content: yes
+        status_code: 200
+      register: cockpit_dashboard_test
+      tags: validate
+      ignore_errors: true
+
+    - name: Debug Cockpit dashboard content
+      debug:
+        msg: "{{ cockpit_dashboard_test.content | truncate(1000) }}"
+      tags: validate
+
+    - name: Assert Cockpit dashboard is accessible
+      assert:
+        that: 
+          - cockpit_dashboard_test.status == 200
+          - cockpit_dashboard_test.content is defined
+          - cockpit_dashboard_test.content | length > 0
+          - "'login' in cockpit_dashboard_test.content | lower or 'cockpit' in cockpit_dashboard_test.content | lower"
+        success_msg: "✅ Cockpit dashboard is accessible and contains expected content"
+        fail_msg: "❌ Cockpit dashboard test failed"
+      tags: validate

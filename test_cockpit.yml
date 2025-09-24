@@ -1,0 +1,50 @@
+---
+- name: Test Cockpit Role
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Remove problematic sources list file
+      file:
+        path: /etc/apt/sources.list.d/bookworm-backports.list
+        state: absent
+      ignore_errors: yes
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      ignore_errors: yes
+
+  roles:
+    - cockpit
+
+  post_tasks:
+    - name: Run Cockpit role again to test idempotency
+      include_role:
+        name: cockpit
+      register: idempotency_test
+
+    - name: Check if the second run was idempotent
+      assert:
+        that: idempotency_test.changed == false
+        success_msg: "✅ Cockpit role is idempotent"
+        fail_msg: "❌ Cockpit role is not idempotent"
+
+    - name: Intentionally break Cockpit to test error handling
+      systemd:
+        name: cockpit.socket
+        state: stopped
+      ignore_errors: true
+
+    - name: Re-run Cockpit role to test error recovery
+      include_role:
+        name: cockpit
+      register: error_recovery_test
+
+    - name: Check if error recovery was successful
+      assert:
+        that: 
+          - error_recovery_test is succeeded
+        success_msg: "✅ Cockpit role successfully recovered from intentional error"
+        fail_msg: "❌ Cockpit role failed to recover from intentional error"

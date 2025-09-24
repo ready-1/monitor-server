@@ -10,3 +10,6 @@ ssh_allow_users: 'monitor'
 become_password: "{{ vault_become_password }}"
 
 # Add other general variables as needed
+
+# Cockpit Configuration
+cockpit_version: '337-1~bpo12+1'
