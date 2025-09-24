@@ -5,6 +5,7 @@
 - name: NetAuto Server Provisioning
   hosts: all
   become: yes
+  become_method: sudo
   gather_facts: yes
   
   # Pre-tasks run before roles and main tasks
@@ -13,11 +14,11 @@
       debug:
         msg: "Starting NetAuto Server provisioning for {{ ansible_hostname }}"
   
-  # Roles section for modular task organization (empty for now)
+  # Roles section for modular task organization
   roles:
-    # Future roles will be added here
+    - basic-utilities
+    # Future roles can be added here
     # Example:
-    # - common
     # - monitoring
     # - network-tools
   
