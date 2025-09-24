@@ -5,7 +5,7 @@
 
 # Sudo/become password for privilege escalation
 # Replace 'your_sudo_password_here' with the actual password before encrypting
-vault_become_password: 'your_sudo_password_here'
+vault_become_password: 'FuseFuse123!'
 
 # Example: Additional sensitive variables can be added here
 # vault_db_password: 'database_password_here'
