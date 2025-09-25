@@ -89,3 +89,30 @@ The playbook includes various validation tasks to ensure:
 - Backup your system before running the playbook
 
 For more detailed information, refer to the individual role READMEs in the `roles/` directory.
+
+## Remove ifupdown (Branch: remove-ifupdown)
+
+To prevent conflicts between legacy `ifupdown` networking scripts and Netplan-managed interfaces, the bootstrap play now validates Netplan and removes the `ifupdown` package immediately after Netplan has been applied by the `network` role.
+
+### Directory structure evaluation
+- Root layout (playbooks, inventories, ansible.cfg, README) aligns with Ansible best practices.
+- Roles remain modular and scoped (`initial_setup`, `network`, `basic-utilities`, `ssh-hardening`, `cockpit`, `nginx-proxy`), and a dedicated `bootstrap` role now encapsulates post-network cleanup tasks.
+- `group_vars/all.yml` and `group_vars/all/` coexist. This is supported but can be confusing; consider consolidating into `group_vars/all/` with a `main.yml` in a follow-up change.
+
+### Validation steps added
+- Confirm Netplan binary exists and gather `netplan info`.
+- Capture interface status via `ip -br a`.
+- Check routing (and optionally ICMP connectivity) to verify networking is operational before removal.
+- Remove `ifupdown` with `apt` (Debian 12 stable repositories) only after validation, then notify a handler that reloads the active backend (`systemd-networkd` or `NetworkManager`) without forcing a restart.
+
+### Suggested manual validation commands
+- `ansible-playbook -i bootstrap_inventory.ini bootstrap.yml -vv`
+- `ansible-playbook -i inventory.ini site.yml -vv`
+- `netplan info`
+- `ip -br a`
+- `ip -4 route get 8.8.8.8`
+- `ping -c 1 8.8.8.8`
+
+### References
+- Ansible Best Practices (Directory Layout): https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_best_practices.html#directory-layout
+- Netplan Reference: https://netplan.io/reference

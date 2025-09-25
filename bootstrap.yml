@@ -10,6 +10,10 @@
       include_vars:
         file: "{{ playbook_dir }}/group_vars/all.yml"
 
+    - name: Debug resolved target static IP
+      debug:
+        msg: "Resolved target_static_ip={{ target_static_ip }}"
+
     - name: Set ansible_host to dhcp_ip
       set_fact:
         ansible_host: "{{ dhcp_ip }}"
@@ -52,31 +56,49 @@
           fail:
             msg: "Privilege escalation validation failed. Check vault password and sudo configuration."
 
-    - name: Extract target static IP from main inventory
-      set_fact:
-        target_static_ip: "{{ hostvars[inventory_hostname]['ansible_host'] }}"
-      vars:
-        inventory_file: "{{ playbook_dir }}/inventory.ini"
 
   roles:
     - initial_setup
     - network
+    - bootstrap
 
   post_tasks:
-    - name: Verify new static IP
-      wait_for:
-        host: "{{ target_static_ip }}"
-        port: 22
-        delay: 10
-        timeout: 60
-      delegate_to: localhost
+    - name: Reset SSH connection to new static IP
+      meta: reset_connection
+
+    - name: Verify Ansible can connect on new static IP
+      wait_for_connection:
+        delay: 3
+        timeout: 90
 
     - name: Test SSH connection to new static IP
-      command: ssh -o BatchMode=yes -o ConnectTimeout=5 {{ ansible_user }}@{{ target_static_ip }} echo success
+      command:
+        argv:
+          - ssh
+          - -F
+          - /dev/null
+          - -o
+          - BatchMode=yes
+          - -o
+          - StrictHostKeyChecking=no
+          - -o
+          - UserKnownHostsFile=/dev/null
+          - -o
+          - IdentitiesOnly=yes
+          - -o
+          - ConnectTimeout=5
+          - -i
+          - "{{ hostvars[inventory_hostname].ansible_ssh_key_file
+                | default('/Users/bob/.ssh/id_monitor_ed25519') }}"
+          - -p
+          - "{{ hostvars[inventory_hostname].ansible_port | default(ssh_port | default(22)) }}"
+          - "{{ hostvars[inventory_hostname].ansible_user | default(ansible_user | default('monitor')) }}@{{ target_static_ip }}"
+          - /bin/true
       register: ssh_result
       changed_when: false
       failed_when: ssh_result.rc != 0
       delegate_to: localhost
+      become: false
 
     - name: Display bootstrap completion message
       debug:

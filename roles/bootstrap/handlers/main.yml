@@ -1,0 +1,21 @@
+---
+# Handlers for bootstrap role
+
+- name: Reload systemd-networkd (if present)
+  listen: Reload network backend
+  ansible.builtin.service:
+    name: systemd-networkd
+    state: reloaded
+  ignore_errors: true
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Reload NetworkManager connections (if present)
+  listen: Reload network backend
+  ansible.builtin.command: nmcli connection reload
+  ignore_errors: true
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - ansible_facts.packages is defined
+    - "'network-manager' in ansible_facts.packages"

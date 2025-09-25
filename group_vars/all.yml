@@ -19,4 +19,12 @@ become_password: "{{ vault_become_password }}"
 # Cockpit Configuration
 cockpit_version: '337-1~bpo12+1'
 
+# Network target configuration
+target_static_ip: "10.211.55.99"
+target_static_prefix: 24
+target_gateway: "10.211.55.1"
+dns_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
 # Add other general variables as needed

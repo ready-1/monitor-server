@@ -1,0 +1,144 @@
+---
+# Directory structure evaluation (no structural changes performed):
+# - Root: ansible.cfg, inventory.ini, bootstrap_inventory.ini, site.yml, bootstrap.yml, README.md (OK)
+# - group_vars: both group_vars/all.yml and group_vars/all/ exist (valid but can be confusing).
+#   Suggestion (non-blocking): consolidate into group_vars/all/ with a main.yml to avoid precedence surprises.
+# - Roles remain modular and scoped: basic-utilities, ssh-hardening, cockpit, nginx-proxy, initial_setup, network (OK).
+# - bootstrap.yml orchestrates roles correctly; this bootstrap role is introduced to encapsulate post-network cleanup.
+# No additional deviations require correction for this change.
+
+- name: Gather installed package facts
+  package_facts:
+    manager: auto
+  changed_when: false
+  tags:
+    - ifupdown
+    - netplan
+    - validate
+
+- name: Check for netplan binary
+  ansible.builtin.stat:
+    path: /usr/sbin/netplan
+  register: netplan_binary
+  changed_when: false
+  tags:
+    - ifupdown
+    - netplan
+    - validate
+
+- name: Collect netplan info
+  ansible.builtin.command: netplan info
+  register: netplan_info
+  changed_when: false
+  failed_when: false
+  tags:
+    - ifupdown
+    - netplan
+    - validate
+
+- name: Inspect network interfaces (brief)
+  ansible.builtin.command: ip -br a
+  register: ip_brief
+  changed_when: false
+  failed_when: false
+  tags:
+    - ifupdown
+    - netplan
+    - validate
+
+- name: Check IPv4 route to 8.8.8.8
+  ansible.builtin.command: ip -4 route get 8.8.8.8
+  register: route_check
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+  tags:
+    - ifupdown
+    - netplan
+    - validate
+
+- name: Optional ICMP connectivity check (may be filtered)
+  ansible.builtin.command: ping -c 1 -w 2 8.8.8.8
+  register: ping_check
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+  tags:
+    - ifupdown
+    - netplan
+    - validate
+
+- name: Assert Netplan is operational before removing ifupdown
+  ansible.builtin.assert:
+    that:
+      - netplan_binary.stat.exists
+      - ansible_check_mode
+        or (route_check is defined and route_check.rc == 0)
+        or (ping_check is defined and ping_check.rc == 0)
+        or "'UP' in ip_brief.stdout"
+    success_msg: "Netplan appears operational; proceeding with ifupdown removal."
+    fail_msg: >-
+      Netplan validation failed (binary missing or network connectivity check unsuccessful). Aborting ifupdown removal.
+  tags:
+    - ifupdown
+    - netplan
+    - validate
+
+- name: Ensure systemd-timesyncd is installed
+  ansible.builtin.apt:
+    name: systemd-timesyncd
+    state: present
+    update_cache: false
+  become: yes
+  when: not ansible_check_mode
+  tags:
+    - ifupdown
+    - cleanup
+    - ntp
+
+- name: Enable NTP synchronization
+  ansible.builtin.command: timedatectl set-ntp true
+  become: yes
+  changed_when: false
+  when: not ansible_check_mode
+  tags:
+    - ifupdown
+    - cleanup
+    - ntp
+
+- name: Wait for NTP synchronization
+  ansible.builtin.shell: 'timedatectl show -p NTPSynchronized --value'
+  register: ntp_sync
+  retries: 20
+  delay: 3
+  until: ntp_sync.stdout.strip() == "yes"
+  changed_when: false
+  become: yes
+  when: not ansible_check_mode
+  tags:
+    - ifupdown
+    - cleanup
+    - ntp
+
+- name: Refresh apt cache ignoring date validity (non-fatal fallback)
+  ansible.builtin.command: apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false update
+  register: apt_update_fallback
+  changed_when: false
+  failed_when: false
+  become: yes
+  when: not ansible_check_mode
+  tags:
+    - ifupdown
+    - cleanup
+
+- name: Remove legacy ifupdown package
+  ansible.builtin.apt:
+    name: ifupdown
+    state: absent
+    purge: yes
+    update_cache: false
+  notify: Reload network backend
+  when: "'ifupdown' in (ansible_facts.packages | default({}))"
+  tags:
+    - ifupdown
+    - cleanup

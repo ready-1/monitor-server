@@ -26,12 +26,17 @@
   set_fact:
     primary_interface: "{{ ansible_default_ipv4.interface | default('ens33') }}"
 
+- name: Check if current netplan configuration exists
+  stat:
+    path: /etc/netplan/01-netcfg.yaml
+  register: netplan_cfg
+
 - name: Backup current netplan configuration
   copy:
     src: /etc/netplan/01-netcfg.yaml
     dest: /etc/netplan/01-netcfg.yaml.backup
     remote_src: yes
-  ignore_errors: yes
+  when: netplan_cfg.stat.exists
 
 - name: Create netplan configuration
   template:
@@ -47,34 +52,57 @@
 
 - name: Wait for network transition
   pause:
-    seconds: 10
-
-- name: Update connection facts
-  setup:
-    gather_subset:
-      - network
-
-- name: Verify static IP is set correctly
-  command: ip -4 addr show {{ primary_interface }} | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
-  register: new_ip_check
-  changed_when: false
-  failed_when: "target_static_ip not in new_ip_check.stdout"
+    seconds: 5
 
 - name: Update ansible_host
   set_fact:
     ansible_host: "{{ target_static_ip }}"
 
+- name: Update ansible_ssh_host for compatibility
+  set_fact:
+    ansible_ssh_host: "{{ target_static_ip }}"
+
 - name: Update inventory in memory
   add_host:
     name: "{{ inventory_hostname }}"
     ansible_host: "{{ target_static_ip }}"
+    ansible_ssh_host: "{{ target_static_ip }}"
+    ansible_ssh_private_key_file: "{{ hostvars[inventory_hostname].ansible_ssh_private_key_file | default(ansible_ssh_private_key_file) }}"
+    ansible_private_key_file: "{{ hostvars[inventory_hostname].ansible_ssh_private_key_file | default(ansible_ssh_private_key_file) }}"
+    ansible_ssh_common_args: "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
-- name: Wait for server to be reachable on new IP
-  wait_for:
-    host: "{{ target_static_ip }}"
-    port: 22
-    delay: 10
-    timeout: 60
+- name: Reset SSH connection to pick up new ansible_host
+  meta: reset_connection
+
+- name: Wait for SSH to be available on new static IP
+  wait_for_connection:
+    delay: 3
+    timeout: 120
+  when: not ansible_check_mode
+
+- name: Reset SSH connection after SSH probe
+  meta: reset_connection
+  when: not ansible_check_mode
+
+- name: Debug new connection target
+  debug:
+    msg: "Reconnecting with ansible_host={{ ansible_host }}, ansible_ssh_host={{ ansible_ssh_host }}"
+  become: false
+  when: not ansible_check_mode
+
+- name: Update connection facts
+  setup:
+    gather_subset:
+      - network
+  become: false
+  when: not ansible_check_mode
+
+- name: Verify static IP is set correctly
+  shell: "ip -4 addr show {{ primary_interface }} | awk '/inet /{print $2}' | cut -d/ -f1"
+  register: new_ip_check
+  changed_when: false
+  failed_when: "target_static_ip not in new_ip_check.stdout"
+  become: false
 
 - name: Include validation tasks
   include_tasks: validate.yml
