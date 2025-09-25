@@ -127,7 +127,7 @@ This project now uses Ansible Vault for secure management of sensitive data.
 
 2. Edit the vault file to set the real sudo password:
    ```
-   ansible-vault edit group_vars/all/vault.yml
+   ansible-vault edit group_vars/all/become_vars.yml
    ```
 
 3. In the vault file, set the `vault_become_password` variable:
