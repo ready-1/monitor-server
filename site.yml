@@ -2,20 +2,17 @@
 # Main Ansible playbook for NetAuto Server provisioning
 # This is the primary entry point for all server configuration tasks
 
-- name: NetAuto Server Provisioning
+- name: Monitor Server Setup
   hosts: all
   become: yes
   become_method: sudo
   gather_facts: yes
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
-  
-  # Pre-tasks run before roles and main tasks
+
   pre_tasks:
     - name: Display provisioning start message
       debug:
         msg: "Starting NetAuto Server provisioning for {{ ansible_hostname }}"
-    
+
     # Validation task block
     - name: Validate privilege escalation with Vault
       block:

@@ -1,0 +1,53 @@
+---
+# Validation tasks for network role
+
+- name: Verify netplan.io is installed
+  command: dpkg-query -W -f='${Status}' netplan.io
+  register: netplan_installed
+  failed_when: "'ok installed' not in netplan_installed.stdout"
+  changed_when: false
+
+- name: Verify netplan config file exists
+  stat:
+    path: /etc/netplan/01-netcfg.yaml
+  register: netplan_config
+  failed_when: not netplan_config.stat.exists
+
+- name: Verify netplan config file permissions
+  file:
+    path: /etc/netplan/01-netcfg.yaml
+    owner: root
+    group: root
+    mode: '0600'
+  check_mode: yes
+  register: file_check
+  failed_when: file_check.changed
+
+- name: Get current IP address
+  command: ip -4 addr show {{ primary_interface }} | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+  register: current_ip
+  changed_when: false
+
+- name: Verify static IP is set correctly
+  assert:
+    that:
+      - "target_static_ip in current_ip.stdout"
+    fail_msg: "Static IP is not set correctly. Expected {{ target_static_ip }}, got {{ current_ip.stdout }}"
+    success_msg: "Static IP is set correctly to {{ target_static_ip }}"
+
+- name: Verify connectivity to gateway
+  command: ping -c 1 10.211.55.1
+  register: ping_gateway
+  changed_when: false
+  failed_when: ping_gateway.rc != 0
+
+- name: Verify connectivity to DNS server
+  command: ping -c 1 1.1.1.1
+  register: ping_dns
+  changed_when: false
+  failed_when: ping_dns.rc != 0
+
+- name: Verify Ansible can connect using new IP
+  wait_for_connection:
+    timeout: 60
+  delegate_to: "{{ target_static_ip }}"

@@ -1,0 +1,6 @@
+---
+# handlers file for network role
+
+- name: Apply netplan config
+  command: netplan apply
+  become: yes

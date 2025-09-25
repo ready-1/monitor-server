@@ -1,0 +1,114 @@
+---
+# tasks file for network role
+
+- name: Capture current network state
+  shell: "ip -4 addr show {{ ansible_default_ipv4.interface }} | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}'"
+  register: current_ip_check
+  changed_when: false
+
+- name: Verify current DHCP IP connectivity
+  assert:
+    that:
+      - current_ip_check.stdout == ansible_host
+    fail_msg: "Current IP ({{ current_ip_check.stdout }}) does not match ansible_host ({{ ansible_host }})"
+    success_msg: "Current IP matches ansible_host"
+
+# target_static_ip is available from group_vars/all.yml
+
+- name: Install netplan.io
+  apt:
+    name: netplan.io
+    state: present
+    update_cache: no
+  become: yes
+
+- name: Detect primary network interface
+  set_fact:
+    primary_interface: "{{ ansible_default_ipv4.interface | default('ens33') }}"
+
+- name: Backup current netplan configuration
+  copy:
+    src: /etc/netplan/01-netcfg.yaml
+    dest: /etc/netplan/01-netcfg.yaml.backup
+    remote_src: yes
+  ignore_errors: yes
+
+- name: Create netplan configuration
+  template:
+    src: 01-netcfg.yaml.j2
+    dest: /etc/netplan/01-netcfg.yaml
+    owner: root
+    group: root
+    mode: '0600'
+  notify: Apply netplan config
+
+- name: Force handler to run immediately
+  meta: flush_handlers
+
+- name: Wait for network transition
+  pause:
+    seconds: 10
+
+- name: Update connection facts
+  setup:
+    gather_subset:
+      - network
+
+- name: Verify static IP is set correctly
+  command: ip -4 addr show {{ primary_interface }} | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+  register: new_ip_check
+  changed_when: false
+  failed_when: "target_static_ip not in new_ip_check.stdout"
+
+- name: Update ansible_host
+  set_fact:
+    ansible_host: "{{ target_static_ip }}"
+
+- name: Update inventory in memory
+  add_host:
+    name: "{{ inventory_hostname }}"
+    ansible_host: "{{ target_static_ip }}"
+
+- name: Wait for server to be reachable on new IP
+  wait_for:
+    host: "{{ target_static_ip }}"
+    port: 22
+    delay: 10
+    timeout: 60
+
+- name: Include validation tasks
+  include_tasks: validate.yml
+  tags: validate
+
+- name: Display success message
+  debug:
+    msg: "Network configuration completed successfully. New IP: {{ target_static_ip }}"
+
+- name: Cleanup backup file
+  file:
+    path: /etc/netplan/01-netcfg.yaml.backup
+    state: absent
+  when: new_ip_check is success
+
+- name: Rollback on failure
+  block:
+    - name: Restore original netplan configuration
+      copy:
+        src: /etc/netplan/01-netcfg.yaml.backup
+        dest: /etc/netplan/01-netcfg.yaml
+        remote_src: yes
+      when: new_ip_check is failed
+
+    - name: Apply original configuration
+      command: netplan apply
+      when: new_ip_check is failed
+
+    - name: Fail with error message
+      fail:
+        msg: "Failed to set static IP. Configuration rolled back to original state."
+      when: new_ip_check is failed
+  always:
+    - name: Remove backup file
+      file:
+        path: /etc/netplan/01-netcfg.yaml.backup
+        state: absent

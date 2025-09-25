@@ -1,0 +1,32 @@
+---
+# Validation tasks for initial_setup role
+
+- name: Verify user exists
+  command: id {{ ansible_user }}
+  register: user_check
+  changed_when: false
+  failed_when: user_check.rc != 0
+
+- name: Verify user is in sudo group
+  command: groups {{ ansible_user }}
+  register: group_check
+  changed_when: false
+  failed_when: "'sudo' not in group_check.stdout"
+
+- name: Verify SSH directory permissions
+  stat:
+    path: "/home/{{ ansible_user }}/.ssh"
+  register: ssh_dir
+  failed_when: 
+    - not ssh_dir.stat.exists
+    - ssh_dir.stat.mode != "0700"
+
+- name: Verify authorized_keys file exists
+  stat:
+    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+  register: auth_keys
+  failed_when: not auth_keys.stat.exists
+
+- name: Verify SSH key is in authorized_keys
+  command: grep -q "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_monitor_ed25519.pub') }}" "/home/{{ ansible_user }}/.ssh/authorized_keys"
+  changed_when: false

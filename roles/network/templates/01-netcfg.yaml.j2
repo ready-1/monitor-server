@@ -1,0 +1,13 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    {{ primary_interface }}:
+      dhcp4: no
+      addresses:
+        - 10.211.55.99/24
+      gateway4: 10.211.55.1
+      nameservers:
+        addresses:
+          - 1.1.1.1
+          - 8.8.8.8

@@ -1,0 +1,83 @@
+---
+- name: Bootstrap Server Setup
+  hosts: all
+  become: yes
+  become_method: sudo
+  gather_facts: no  # Changed to 'no' to avoid initial connection failure
+
+  pre_tasks:
+    - name: Include variables from group_vars/all.yml
+      include_vars:
+        file: "{{ playbook_dir }}/group_vars/all.yml"
+
+    - name: Set ansible_host to dhcp_ip
+      set_fact:
+        ansible_host: "{{ dhcp_ip }}"
+
+    - name: Gather facts
+      setup:
+    - name: Display provisioning start message
+      debug:
+        msg: "Starting Bootstrap Server Setup for {{ ansible_hostname }}"
+
+    - name: Validate privilege escalation with Vault
+      block:
+        - name: Check effective user ID
+          set_fact:
+            is_root: "{{ ansible_effective_user_id == 0 }}"
+          
+        - name: Test sudo access with vault password
+          command: whoami
+          register: privilege_test
+          changed_when: false
+          when: not ansible_check_mode
+        
+        - name: Assert privilege escalation successful
+          assert:
+            that:
+              - is_root or (not ansible_check_mode and privilege_test.stdout == 'root') or ansible_check_mode
+            success_msg: "✅ Privilege escalation successful - running as root"
+            fail_msg: "❌ Privilege escalation failed - not running as root"
+      
+      rescue:
+        - name: Handle privilege escalation failure
+          debug:
+            msg: |
+              ❌ Privilege escalation validation failed. Possible causes:
+              - Vault password file missing or incorrect
+              - Sudo configuration issues
+              - User lacks sudo privileges
+        
+        - name: Fail with descriptive message
+          fail:
+            msg: "Privilege escalation validation failed. Check vault password and sudo configuration."
+
+    - name: Extract target static IP from main inventory
+      set_fact:
+        target_static_ip: "{{ hostvars[inventory_hostname]['ansible_host'] }}"
+      vars:
+        inventory_file: "{{ playbook_dir }}/inventory.ini"
+
+  roles:
+    - initial_setup
+    - network
+
+  post_tasks:
+    - name: Verify new static IP
+      wait_for:
+        host: "{{ target_static_ip }}"
+        port: 22
+        delay: 10
+        timeout: 60
+      delegate_to: localhost
+
+    - name: Test SSH connection to new static IP
+      command: ssh -o BatchMode=yes -o ConnectTimeout=5 {{ ansible_user }}@{{ target_static_ip }} echo success
+      register: ssh_result
+      changed_when: false
+      failed_when: ssh_result.rc != 0
+      delegate_to: localhost
+
+    - name: Display bootstrap completion message
+      debug:
+        msg: "Bootstrap completed successfully. Server now accessible at {{ target_static_ip }}"

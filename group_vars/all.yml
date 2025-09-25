@@ -2,6 +2,13 @@
 # Main variables file for all hosts
 # Non-sensitive variables are stored here
 
+# Network Configuration
+dhcp_ip: "10.211.55.10"
+
+# SSH Configuration
+ansible_user: monitor
+ansible_ssh_key_file: /Users/bob/.ssh/id_monitor_ed25519
+
 # SSH Hardening Configuration
 ssh_port: 22
 ssh_allow_users: 'monitor'
@@ -9,7 +16,7 @@ ssh_allow_users: 'monitor'
 # System Configuration
 become_password: "{{ vault_become_password }}"
 
-# Add other general variables as needed
-
 # Cockpit Configuration
 cockpit_version: '337-1~bpo12+1'
+
+# Add other general variables as needed
