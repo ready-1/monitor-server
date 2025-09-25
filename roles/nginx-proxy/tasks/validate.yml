@@ -1,0 +1,76 @@
+---
+# tasks/validate.yml for nginx-proxy role
+
+- name: Check Nginx configuration syntax
+  command: nginx -t
+  changed_when: false
+  register: nginx_syntax_check
+
+- name: Assert Nginx configuration is valid
+  assert:
+    that:
+      - nginx_syntax_check.rc == 0
+    success_msg: "✅ Nginx configuration syntax is valid"
+    fail_msg: "❌ Nginx configuration syntax is invalid"
+
+- name: Check Nginx service status
+  command: systemctl is-active nginx
+  register: nginx_service_status
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Assert Nginx service is active
+  assert:
+    that: "not ansible_check_mode or (nginx_service_status is defined and 'active' in nginx_service_status.stdout)"
+    success_msg: "✅ Nginx service is active and running"
+    fail_msg: "❌ Nginx service is not active"
+  when: not ansible_check_mode
+
+- name: Simulate Nginx service check (check mode)
+  debug:
+    msg: "Nginx service status would be checked and asserted to be active in non-check mode"
+  when: ansible_check_mode
+
+- name: Test HTTP response
+  uri:
+    url: "http://localhost"
+    return_content: yes
+  register: http_response
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Assert HTTP response is successful
+  assert:
+    that:
+      - http_response.status == 200
+    success_msg: "✅ HTTP response is successful"
+    fail_msg: "❌ HTTP response failed"
+  when: not ansible_check_mode
+
+- name: Simulate HTTP response check (check mode)
+  debug:
+    msg: "HTTP response would be checked in non-check mode"
+  when: ansible_check_mode
+
+- name: Test HTTPS response
+  uri:
+    url: "https://localhost"
+    validate_certs: no
+    return_content: yes
+  register: https_response
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Assert HTTPS response is successful
+  assert:
+    that:
+      - https_response.status == 200
+    success_msg: "✅ HTTPS response is successful"
+    fail_msg: "❌ HTTPS response failed"
+  when: not ansible_check_mode
+
+- name: Simulate HTTPS response check (check mode)
+  debug:
+    msg: "HTTPS response would be checked in non-check mode"
+  when: ansible_check_mode

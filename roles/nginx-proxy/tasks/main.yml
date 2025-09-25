@@ -1,0 +1,153 @@
+---
+# tasks/main.yml for nginx-proxy role
+
+- name: Add Nginx official repository GPG key
+  apt_key:
+    url: https://nginx.org/keys/nginx_signing.key
+    state: present
+
+- name: Add Nginx official repository
+  apt_repository:
+    repo: "deb http://nginx.org/packages/debian {{ ansible_distribution_release }} nginx"
+    filename: nginx
+    state: present
+    update_cache: yes
+
+- name: Create APT preferences file for Nginx
+  template:
+    src: preferences.j2
+    dest: /etc/apt/preferences.d/nginx
+    mode: '0644'
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  changed_when: false
+
+- name: Get available Nginx version
+  apt:
+    name: nginx
+    state: present
+  check_mode: yes
+  register: nginx_version_check
+
+- name: Display available Nginx version
+  debug:
+    var: nginx_version_check.candidate_version
+
+- name: Install latest Nginx version
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Install pip and setuptools
+  apt:
+    name: 
+      - python3-pip
+      - python3-setuptools
+    state: present
+
+- name: Upgrade pip
+  pip:
+    name: pip
+    state: latest
+    executable: pip3
+  when: not ansible_check_mode
+
+- name: Install Python cryptography library
+  pip:
+    name: cryptography
+    state: present
+    executable: pip3
+  when: not ansible_check_mode
+
+- name: Check if cryptography is installed (check mode)
+  command: python3 -c "import cryptography; print(cryptography.__version__)"
+  register: cryptography_check
+  changed_when: false
+  failed_when: false
+  check_mode: no
+  when: ansible_check_mode
+
+- name: Generate SSL private key
+  community.crypto.openssl_privatekey:
+    path: "{{ nginx_ssl_key_path }}"
+    mode: '0600'
+  notify: restart_nginx
+  when: not ansible_check_mode
+
+- name: Simulate SSL private key generation (check mode)
+  debug:
+    msg: "SSL private key would be generated at {{ nginx_ssl_key_path }}"
+  when: ansible_check_mode
+
+- name: Generate SSL certificate
+  community.crypto.x509_certificate:
+    path: "{{ nginx_ssl_cert_path }}"
+    privatekey_path: "{{ nginx_ssl_key_path }}"
+    provider: selfsigned
+  notify: restart_nginx
+  when: not ansible_check_mode
+
+- name: Simulate SSL certificate generation (check mode)
+  debug:
+    msg: "SSL certificate would be generated at {{ nginx_ssl_cert_path }}"
+  when: ansible_check_mode
+
+- name: Template Nginx main configuration
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    mode: '0644'
+  notify: reload_nginx
+
+- name: Template default site configuration
+  template:
+    src: default.conf.j2
+    dest: /etc/nginx/sites-available/default
+    mode: '0644'
+  notify: reload_nginx
+
+- name: Enable default site
+  file:
+    src: /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-enabled/default
+    state: link
+  notify: reload_nginx
+  when: not ansible_check_mode
+
+- name: Simulate enabling default site (check mode)
+  debug:
+    msg: "Default site would be enabled by creating a symlink from /etc/nginx/sites-available/default to /etc/nginx/sites-enabled/default"
+  when: ansible_check_mode
+
+- name: Ensure Nginx service is enabled and started
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+  when: not ansible_check_mode
+
+- name: Simulate ensuring Nginx service is enabled and started (check mode)
+  debug:
+    msg: "Nginx service would be enabled and started"
+  when: ansible_check_mode
+
+- name: Allow HTTP through UFW
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Allow HTTPS through UFW
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+- name: Include validation tasks
+  include_tasks: validate.yml
+  tags:
+    - validate
+    - always

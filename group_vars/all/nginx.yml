@@ -1,0 +1,11 @@
+---
+# Nginx configuration variables
+
+# Specify the Nginx version to install
+nginx_version: "1.24.0-1~bookworm"
+
+# SSL certificate paths
+nginx_ssl_cert_path: "/etc/ssl/certs/nginx-selfsigned.crt"
+nginx_ssl_key_path: "/etc/ssl/private/nginx-selfsigned.key"
+
+# Add any other Nginx-specific variables here

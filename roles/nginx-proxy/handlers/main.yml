@@ -1,0 +1,18 @@
+---
+# handlers/main.yml for nginx-proxy role
+
+- name: restart_nginx
+  systemd:
+    name: nginx
+    state: restarted
+
+- name: reload_nginx
+  systemd:
+    name: nginx
+    state: reloaded
+  when: not ansible_check_mode
+
+- name: simulate_reload_nginx
+  debug:
+    msg: "Nginx would be reloaded in non-check mode"
+  when: ansible_check_mode
