@@ -1,6 +1,12 @@
 ---
 # tasks/main.yml for nginx-proxy role
 
+- name: Ensure gnupg is installed
+  apt:
+    name: gnupg
+    state: present
+    update_cache: yes
+
 - name: Add Nginx official repository GPG key
   apt_key:
     url: https://nginx.org/keys/nginx_signing.key

@@ -6,7 +6,13 @@
     name: ufw
     state: present
     update_cache: yes
+  become: yes
+  register: ufw_installation
   # Install UFW from stable repositories to manage firewall rules
+
+- name: Debug UFW installation
+  debug:
+    var: ufw_installation
 
 - name: Deploy hardened SSH configuration
   template:
@@ -36,42 +42,43 @@
 # SSH configuration is applied before UFW to prevent accidental lockouts.
 # This ensures SSH access remains available when firewall rules are applied.
 
-- name: Enable UFW firewall
-  community.general.ufw:
-    state: enabled
-  tags: 
-    - ufw
-    - firewall
+- name: UFW Configuration
+  block:
+    - name: Check if UFW is installed
+      command: which ufw
+      register: ufw_check
+      ignore_errors: yes
+      changed_when: false
 
-- name: Allow SSH access through firewall
-  community.general.ufw:
-    rule: allow
-    port: "{{ ssh_port | default(22) }}"
-    proto: tcp
-  tags: 
-    - ufw
-    - firewall
+    - name: Enable UFW firewall
+      community.general.ufw:
+        state: enabled
+      when: ufw_check.rc == 0
 
-- name: Set UFW default policy - deny incoming
-  community.general.ufw:
-    default: deny
-    direction: incoming
-  tags: 
-    - ufw
-    - firewall
+    - name: Allow SSH access through firewall
+      community.general.ufw:
+        rule: allow
+        port: "{{ ssh_port | default(22) }}"
+        proto: tcp
+      when: ufw_check.rc == 0
 
-- name: Set UFW default policy - allow outgoing
-  community.general.ufw:
-    default: allow
-    direction: outgoing
-  tags: 
-    - ufw
-    - firewall
+    - name: Set UFW default policy - deny incoming
+      community.general.ufw:
+        default: deny
+        direction: incoming
+      when: ufw_check.rc == 0
 
-# Ensure changes are applied
-- name: Reload UFW
-  community.general.ufw:
-    state: reloaded
+    - name: Set UFW default policy - allow outgoing
+      community.general.ufw:
+        default: allow
+        direction: outgoing
+      when: ufw_check.rc == 0
+
+    - name: Reload UFW
+      community.general.ufw:
+        state: reloaded
+      when: ufw_check.rc == 0
+  when: not ansible_check_mode
   tags: 
     - ufw
     - firewall

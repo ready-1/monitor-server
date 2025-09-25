@@ -34,10 +34,19 @@ This Ansible playbook automates the provisioning of a NetAuto Server with Nginx 
 
 ## Roles
 
-- `basic-utilities`: Installs and validates essential packages
-- `ssh-hardening`: Applies SSH security configurations
-- `nginx-proxy`: Sets up Nginx as a reverse proxy
-- `cockpit`: Installs and configures the Cockpit web console
+The roles are executed in the following order:
+
+1. `basic-utilities`: Installs and validates essential packages
+2. `ssh-hardening`: Applies SSH security configurations
+3. `cockpit`: Installs and configures the Cockpit web console
+4. `nginx-proxy`: Sets up Nginx as a reverse proxy
+
+## Nginx-Proxy Role
+- Installs from official stable repo, pins to {{ nginx_version }}.
+- Sets up basic HTTPS with self-signed cert.
+- Prepares for future proxies (placeholders in default config), excludes Cockpit.
+- Opens UFW 80/443.
+- Validation: service status, curl checks.
 
 ## Configuration
 

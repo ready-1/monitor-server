@@ -57,8 +57,8 @@
   roles:
     - basic-utilities
     - ssh-hardening
-    - nginx-proxy
     - cockpit
+    - nginx-proxy
     # Future roles can be added here
     # Example:
     # - monitoring
