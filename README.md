@@ -18,16 +18,36 @@ This Ansible playbook automates the provisioning of a NetAuto Server with Nginx 
 
 ## Usage
 
-1. Update the `inventory.ini` file with your target server details.
-2. Review and adjust variables in `group_vars/all.yml` if needed.
-3. Run the playbook:
+### Bootstrap Process
 
+1. Update the `group_vars/all.yml` file with your DHCP IP:
+   ```yaml
+   dhcp_ip: "your_dhcp_ip_here"
+   ```
+
+2. Update the `inventory.ini` file with your target static IP:
+   ```ini
+   [servers]
+   monitor-server ansible_host=your_static_ip_here ansible_user=monitor
+   ```
+
+3. Run the bootstrap playbook:
+   ```
+   ansible-playbook -i bootstrap_inventory.ini bootstrap.yml
+   ```
+   This will configure the server with the static IP and set up initial SSH access.
+
+### Main Configuration
+
+After the bootstrap process is complete:
+
+1. Review and adjust variables in `group_vars/all.yml` if needed.
+2. Run the main playbook:
    ```
    ansible-playbook -i inventory.ini site.yml
    ```
 
-4. For a dry run (check mode):
-
+3. For a dry run (check mode):
    ```
    ansible-playbook -i inventory.ini site.yml --check
    ```
