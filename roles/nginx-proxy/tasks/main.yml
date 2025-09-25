@@ -41,25 +41,12 @@
     state: present
     update_cache: yes
 
-- name: Install pip and setuptools
+- name: Install required Python packages
   apt:
     name: 
-      - python3-pip
       - python3-setuptools
+      - python3-cryptography
     state: present
-
-- name: Upgrade pip
-  pip:
-    name: pip
-    state: latest
-    executable: pip3
-  when: not ansible_check_mode
-
-- name: Install Python cryptography library
-  pip:
-    name: cryptography
-    state: present
-    executable: pip3
   when: not ansible_check_mode
 
 - name: Check if cryptography is installed (check mode)
@@ -102,24 +89,33 @@
     mode: '0644'
   notify: reload_nginx
 
+- name: Create Nginx configuration directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /etc/nginx/conf.d
+    - /etc/nginx/sites-available
+    - /etc/nginx/sites-enabled
+
 - name: Template default site configuration
   template:
     src: default.conf.j2
-    dest: /etc/nginx/sites-available/default
+    dest: /etc/nginx/conf.d/default.conf
     mode: '0644'
   notify: reload_nginx
 
-- name: Enable default site
-  file:
-    src: /etc/nginx/sites-available/default
-    dest: /etc/nginx/sites-enabled/default
-    state: link
-  notify: reload_nginx
+- name: Ensure Nginx service is enabled and started
+  systemd:
+    name: nginx
+    state: restarted
+    enabled: yes
   when: not ansible_check_mode
 
-- name: Simulate enabling default site (check mode)
+- name: Simulate ensuring Nginx service is enabled and started (check mode)
   debug:
-    msg: "Default site would be enabled by creating a symlink from /etc/nginx/sites-available/default to /etc/nginx/sites-enabled/default"
+    msg: "Nginx service would be enabled and restarted"
   when: ansible_check_mode
 
 - name: Ensure Nginx service is enabled and started

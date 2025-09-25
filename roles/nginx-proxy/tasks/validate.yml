@@ -35,6 +35,7 @@
 - name: Test HTTP response
   uri:
     url: "http://localhost"
+    validate_certs: no
     return_content: yes
   register: http_response
   failed_when: false
