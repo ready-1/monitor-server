@@ -53,7 +53,6 @@ apt update
 # Install complete netplan ecosystem
 apt install -y \
     netplan.io \
-    systemd-networkd \
     nplan \
     network-manager \
     iproute2 \
