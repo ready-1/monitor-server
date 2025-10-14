@@ -1,0 +1,50 @@
+---
+# tasks/main.yml for website role
+
+- name: Create website CSS directory
+  file:
+    path: /usr/share/nginx/html/css
+    state: directory
+    mode: '0755'
+
+- name: Create website JS directory
+  file:
+    path: /usr/share/nginx/html/js
+    state: directory
+    mode: '0755'
+
+- name: Copy Bootstrap CSS files
+  copy:
+    src: "{{ item }}"
+    dest: /usr/share/nginx/html/css/
+    mode: '0644'
+  with_fileglob:
+    - files/css/bootstrap*.css
+    - files/css/bootstrap*.css.map
+
+- name: Copy Bootstrap JS files
+  copy:
+    src: "{{ item }}"
+    dest: /usr/share/nginx/html/js/
+    mode: '0644'
+  with_fileglob:
+    - files/js/bootstrap*.js
+    - files/js/bootstrap*.js.map
+
+- name: Template main index page
+  template:
+    src: index.html.j2
+    dest: /usr/share/nginx/html/index.html
+    mode: '0644'
+
+- name: Template devices page
+  template:
+    src: devices.html.j2
+    dest: /usr/share/nginx/html/devices.html
+    mode: '0644'
+
+- name: Include validation tasks
+  include_tasks: validate.yml
+  tags:
+    - validate
+    - always

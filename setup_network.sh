@@ -1,0 +1,272 @@
+#!/bin/bash
+#
+# setup_network.sh - Comprehensive network setup after fresh Debian 12 install
+# This script prepares the server for Ansible deployment by configuring static IP,
+# SSH, and required network dependencies.
+#
+# Usage: ./setup_network.sh
+#
+# Author: Ready-1 LLC
+#
+
+set -e  # Exit on any error
+
+# Network configuration (should match group_vars/all.yml)
+STATIC_IP="10.211.55.99"
+NETMASK="24"
+GATEWAY="10.211.55.1"
+DNS_SERVERS="1.1.1.1,8.8.8.8"
+
+# SSH Configuration
+SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINtF9YR+Qp8YxSkKv+V8Fe4yAoSlN/1cRLMN1CLNevFr bob@mac"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+echo_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+echo_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+echo_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Trap for cleanup on error
+cleanup() {
+    if [ $? -ne 0 ]; then
+        echo_error "Setup failed. System may be in inconsistent state."
+        echo_warning "You may need to manually verify network connectivity before retrying."
+        exit 1
+    fi
+}
+trap cleanup EXIT
+
+echo_info "Starting comprehensive network setup for Monitor Server..."
+echo_info "Static IP: $STATIC_IP/$NETMASK"
+echo_info "Gateway: $GATEWAY"
+
+# Step 1: Update package lists and install required network packages
+echo_info "Installing network dependencies..."
+apt update
+
+# Install complete netplan ecosystem
+apt install -y \
+    netplan.io \
+    systemd-networkd \
+    nplan \
+    network-manager \
+    iproute2 \
+    dnsutils \
+    curl \
+    wget \
+    openssh-server \
+    openssh-client \
+    whois \
+    ufw \
+    sudo
+
+echo_success "Network dependencies installed"
+
+# Step 2: Detect network interface
+echo_info "Detecting primary network interface..."
+INTERFACE=$(ip -br a | grep -v lo | grep UP | head -1 | awk '{print $1}')
+
+if [ -z "$INTERFACE" ]; then
+    echo_error "Could not detect network interface"
+    exit 1
+fi
+
+echo_info "Primary interface detected: $INTERFACE"
+
+# Step 3: Backup existing network configuration
+echo_info "Backing up existing network configuration..."
+cp /etc/netplan/00-installer-config.yaml /etc/netplan/00-installer-config.yaml.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+
+# Step 4: Create new netplan configuration
+echo_info "Creating static IP netplan configuration..."
+cat > /etc/netplan/01-static.yaml << EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    $INTERFACE:
+      dhcp4: no
+      addresses:
+        - $STATIC_IP/$NETMASK
+      routes:
+        - to: default
+          via: $GATEWAY
+          metric: 100
+      nameservers:
+        addresses: [$(echo $DNS_SERVERS | sed 's/,/","/g' | sed 's/^/"/;s/$/"/')]
+EOF
+
+echo_success "Netplan configuration created"
+
+# Step 5: Verify netplan syntax
+echo_info "Validating netplan configuration syntax..."
+if ! netplan generate; then
+    echo_error "Netplan syntax validation failed"
+    echo_info "Restoring backup configuration..."
+
+    # Restore backup if it exists
+    BACKUP_FILE=$(ls -t /etc/netplan/00-installer-config.yaml.backup.* 2>/dev/null | head -1)
+    if [ -f "$BACKUP_FILE" ]; then
+        cp "$BACKUP_FILE" /etc/netplan/00-installer-config.yaml
+    fi
+    exit 1
+fi
+
+echo_success "Netplan syntax is valid"
+
+# Step 6: Apply netplan configuration
+echo_info "Applying network configuration..."
+netplan apply
+
+# Give network time to settle
+sleep 5
+
+echo_success "Network configuration applied"
+
+# Step 7: Verify IP address assignment
+echo_info "Verifying IP address assignment..."
+VERIFIED_IP=$(ip -4 addr show $INTERFACE | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+
+if [ "$VERIFIED_IP" != "$STATIC_IP" ]; then
+    echo_error "IP address verification failed. Expected: $STATIC_IP, Got: $VERIFIED_IP"
+
+    # Attempt rollback
+    echo_info "Attempting network configuration rollback..."
+    rm -f /etc/netplan/01-static.yaml
+
+    BACKUP_FILE=$(ls -t /etc/netplan/00-installer-config.yaml.backup.* 2>/dev/null | head -1)
+    if [ -f "$BACKUP_FILE" ]; then
+        cp "$BACKUP_FILE" /etc/netplan/00-installer-config.yaml
+        netplan apply
+    fi
+    exit 1
+fi
+
+echo_success "IP address correctly configured: $VERIFIED_IP"
+
+# Step 8: Test network connectivity
+echo_info "Testing network connectivity..."
+
+# Test default route
+if ! ip route get 8.8.8.8 >/dev/null 2>&1; then
+    echo_error "Default route configuration failed"
+    exit 1
+fi
+
+# Test DNS resolution
+if ! nslookup google.com >/dev/null 2>&1; then
+    echo_warning "DNS resolution test failed - possible DNS issue"
+else
+    echo_success "DNS resolution working"
+fi
+
+# Test internet connectivity
+if curl -s --max-time 10 google.com >/dev/null 2>&1; then
+    echo_success "Internet connectivity confirmed"
+else
+    echo_warning "Internet connectivity test failed"
+fi
+
+# Step 9: Configure SSH
+echo_info "Configuring SSH server..."
+
+# Create monitor user
+if ! id -u monitor >/dev/null 2>&1; then
+    useradd -m -s /bin/bash monitor
+    usermod -aG sudo monitor
+    echo_success "Created monitor user"
+else
+    echo_info "Monitor user already exists"
+fi
+
+# Create .ssh directory for monitor
+mkdir -p /home/monitor/.ssh
+chmod 700 /home/monitor/.ssh
+chown monitor:monitor /home/monitor/.ssh
+
+# Add SSH public key
+echo "$SSH_PUBLIC_KEY" > /home/monitor/.ssh/authorized_keys
+chmod 600 /home/monitor/.ssh/authorized_keys
+chown monitor:monitor /home/monitor/.ssh/authorized_keys
+
+echo_success "SSH public key configured"
+
+# Step 10: Configure basic firewall
+echo_info "Configuring basic firewall..."
+
+# Allow SSH (port 22 assumed)
+ufw allow ssh
+
+# Allow HTTP/HTTPS (will be needed later)
+ufw allow 80
+ufw allow 443
+
+# Allow Cockpit (will be needed later)
+ufw allow 9090
+
+ufw --force enable
+ufw status
+
+echo_success "Firewall configured"
+
+# Step 11: Test SSH connectivity (local test)
+echo_info "Testing SSH service..."
+systemctl enable ssh
+systemctl start ssh
+
+if systemctl is-active --quiet ssh; then
+    echo_success "SSH service is running"
+else
+    echo_error "SSH service failed to start"
+    exit 1
+fi
+
+# Step 12: Verify system time synchronization
+echo_info "Checking system time synchronization..."
+apt install -y systemd-timesyncd
+timedatectl set-ntp true
+
+# Wait for NTP sync
+sleep 2
+
+if timedatectl show -p NTPSynchronized --value | grep -q "yes"; then
+    echo_success "NTP synchronization active"
+else
+    echo_warning "NTP synchronization not yet confirmed (may require more time)"
+fi
+
+# Step 13: Final system validation
+echo_info "Performing final system validation..."
+
+# Check required commands
+REQUIRED_COMMANDS=("netplan" "ip" "systemctl" "curl" "ufw")
+for cmd in "${REQUIRED_COMMANDS[@]}"; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+        echo_success "✓ $cmd available"
+    else
+        echo_warning "✗ $cmd not found"
+    fi
+done
+
+# Display final network information
+echo
+echo_success "=== Network Setup Complete ==="
+echo_info "New IP Address: $STATIC_IP"
+echo_info "Network Interface: $INTERFACE"
+echo_info "Gateway: $GATEWAY"
+echo_info "DNS Servers: $DNS_SERVERS"
+echo_info "SSH User: monitor"
+echo
+echo_info "Next steps:"
+echo "  1. Exit this session and reconnect as 'monitor' user:"
+echo "     ssh monitor@$STATIC_IP"
+echo "  2. Test Ansible connectivity: ansible -i inventory.ini all -m ping"
+echo "  3. Run deployment: ansible-playbook -i inventory.ini site.yml"
+
+echo_success "Network preparation complete! Server is ready for Ansible deployment."

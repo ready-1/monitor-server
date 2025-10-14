@@ -1,6 +1,10 @@
 ---
-# Main Ansible playbook for NetAuto Server provisioning
-# This is the primary entry point for all server configuration tasks
+# Monitor Server Setup - Simplified Single-Playbook Deployment
+# This playbook configures the complete monitor server stack
+#
+# Prerequisites: Run ./setup_network.sh on the server first
+#
+# Usage: ansible-playbook -i inventory.ini site.yml
 
 - name: Monitor Server Setup
   hosts: all
@@ -11,112 +15,108 @@
   pre_tasks:
     - name: Display provisioning start message
       debug:
-        msg: "Starting NetAuto Server provisioning for {{ ansible_hostname }}"
+        msg: "Starting Monitor Server provisioning for {{ ansible_hostname }} ({{ ansible_host }})"
 
-    # Validation task block
-    - name: Validate privilege escalation with Vault
+    - name: Validate environment prerequisites
       block:
-        - name: Check effective user ID
-          set_fact:
-            is_root: "{{ ansible_effective_user_id == 0 }}"
-          
-        - name: Test sudo access with vault password
-          command: whoami
-          register: privilege_test
+        - name: Check if running as monitor user
+          fail:
+            msg: "Playbook must be run as 'monitor' user (not root). Current user: {{ ansible_user }}"
+          when: ansible_user != 'monitor'
+
+        - name: Verify static IP matches inventory
+          command: hostname -I | awk '{print $1}'
+          register: current_ip
           changed_when: false
-          when: not ansible_check_mode
-          tags: validate-escalation
-        
-        - name: Assert privilege escalation successful
+
+        - name: Display IP verification
+          debug:
+            msg: "Configured IP: {{ ansible_host }}, Detected IP: {{ current_ip.stdout }}"
+
+        - name: Assert IP consistency (warn only)
           assert:
-            that:
-              - is_root or (not ansible_check_mode and privilege_test.stdout == 'root') or ansible_check_mode
-            success_msg: "✅ Privilege escalation successful - running as root"
-            fail_msg: "❌ Privilege escalation failed - not running as root"
-          tags: validate-escalation
-      
+            that: current_ip.stdout | ipaddr(ansible_host) or ansible_check_mode
+            success_msg: "✅ IP configuration verified"
+            fail_msg: "⚠️ IP mismatch detected - verify network configuration"
+          ignore_errors: yes
+
+        - name: Check essential dependencies
+          command: "{{ item }} --version"
+          register: cmd_check
+          changed_when: false
+          failed_when: cmd_check.rc != 0
+          with_items:
+            - netplan
+            - ufw
+            - systemctl
+
+        - name: Report dependency status
+          debug:
+            msg: "All required network dependencies are installed"
+          when: not ansible_check_mode
+
       rescue:
-        - name: Handle privilege escalation failure
+        - name: Prerequisite check failure
           debug:
             msg: |
-              ❌ Privilege escalation validation failed. Possible causes:
-              - Vault password file missing or incorrect
-              - Sudo configuration issues
-              - User lacks sudo privileges
-          tags: validate-escalation
-        
-        - name: Fail with descriptive message
-          fail:
-            msg: "Privilege escalation validation failed. Check vault password and sudo configuration."
-          tags: validate-escalation
-  
-  # Roles section for modular task organization
+              Prerequisites validation failed. Please ensure:
+              1. Run ./setup_network.sh as root after fresh Debian install
+              2. Connected as 'monitor' user: ssh monitor@{{ ansible_host }}
+              3. Server has static IP configured: {{ ansible_host }}
+          failed_when: true
+      tags: [validate, prerequisites]
+
   roles:
     - basic-utilities
     - ssh-hardening
     - cockpit
     - nginx-proxy
-    # Future roles can be added here
-    # Example:
-    # - monitoring
-    # - network-tools
-  
-  # Main tasks section (empty for now, will use roles)
-  tasks:
-    # Individual tasks can be added here if not using roles
+    - website
 
-  # Post-tasks for validation
   post_tasks:
-    - name: Check Cockpit service status
-      command: systemctl status cockpit
-      register: cockpit_service_status
-      changed_when: false
-      failed_when: false
-      when: not ansible_check_mode
-      tags: validate
-
-    - name: Assert Cockpit service is active
-      assert:
-        that: "not ansible_check_mode or (cockpit_service_status is defined and 'Active: active' in cockpit_service_status.stdout)"
-        success_msg: "✅ Cockpit service is active and running"
-        fail_msg: "❌ Cockpit service is not active"
-      when: not ansible_check_mode
-      tags: validate
-
-    - name: Simulate Cockpit service check (check mode)
+    - name: Display deployment summary
       debug:
-        msg: "Cockpit service status would be checked in non-check mode"
-      when: ansible_check_mode
-      tags: validate
+        msg: |
+          === Monitor Server Deployment Complete ===
+          Server: {{ ansible_hostname }}
+          IP: {{ ansible_host }}
+          Cockpit UI: https://{{ ansible_host }}:9090
+          Web Dashboard: https://{{ ansible_host }}
+          SSH: ssh monitor@{{ ansible_host }}
 
-    - name: Test Cockpit dashboard accessibility
+    - name: Validate core services
+      include_tasks: roles/basic-utilities/tasks/validate.yml
+      tags: [validate]
+
+    - name: Validate SSH hardening
+      include_tasks: roles/ssh-hardening/tasks/validate.yml
+      tags: [validate]
+
+    - name: Validate Cockpit installation
+      include_tasks: roles/cockpit/tasks/validate.yml
+      tags: [validate]
+
+    - name: Validate Nginx proxy
+      include_tasks: roles/nginx-proxy/tasks/validate.yml
+      tags: [validate]
+
+    - name: Validate website deployment
+      include_tasks: roles/website/tasks/validate.yml
+      tags: [validate]
+
+    - name: Final connectivity test
       uri:
-        url: 'https://localhost:9090'
+        url: "https://{{ ansible_host }}"
         validate_certs: no
         return_content: yes
         status_code: 200
-      register: cockpit_dashboard_test
-      tags: validate
-      ignore_errors: true
+      register: final_web_test
+      failed_when: false
+      ignore_errors: yes
       when: not ansible_check_mode
+      tags: [validate]
 
-    - name: Debug Cockpit dashboard content
+    - name: Final success message
       debug:
-        msg: "{{ cockpit_dashboard_test.content | default('') | truncate(1000) }}"
-      tags: validate
-      when: not ansible_check_mode
-
-    - name: Assert Cockpit dashboard is accessible
-      assert:
-        that: 
-          - not ansible_check_mode
-        success_msg: "✅ Cockpit dashboard is accessible and contains expected content"
-        fail_msg: "❌ Cockpit dashboard test failed"
-      tags: validate
-      when: not ansible_check_mode
-
-    - name: Simulate Cockpit dashboard accessibility check (check mode)
-      debug:
-        msg: "Cockpit dashboard accessibility would be checked in non-check mode"
-      when: ansible_check_mode
-      tags: validate
+        msg: "🎉 All services deployed and validated successfully!"
+      when: final_web_test is defined and final_web_test.status == 200

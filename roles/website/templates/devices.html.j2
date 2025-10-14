@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="auto">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Devices - Monitor Server Dashboard</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bs-body-color: #212529;
+            --bs-body-bg: #ffffff;
+        }
+
+        [data-bs-theme="dark"] {
+            --bs-body-color: #dee2e6;
+            --bs-body-bg: #212529;
+        }
+
+        .hero-devices {
+            min-height: 40vh;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #6f42c1 0%, #6610f2 100%);
+            color: white;
+        }
+
+        .device-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .device-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .status-online {
+            color: #198754;
+        }
+
+        .status-offline {
+            color: #dc3545;
+        }
+
+        .status-warning {
+            color: #fd7e14;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand fw-light" href="/">Monitor Server</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="devices.html">Devices</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/cockpit" target="_blank">Cockpit Console</a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-link nav-link" id="theme-toggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-moon-stars" viewBox="0 0 16 16">
+                                <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 0 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278zM4.858 1.311A7.269 7.269 0 0 0 1.025 7.71c0 4.02 3.279 7.276 7.319 7.276a7.316 7.316 0 0 0 5.205-2.162c-.337.042-.68.063-1.029.063-4.61 0-8.343-3.714-8.343-8.29 0-1.167.242-2.278.681-3.286z"/>
+                                <path d="M10.794 3.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387a1.734 1.734 0 0 0-1.097 1.097l-.387 1.162a.217.217 0 0 1-.412 0l-.387-1.162A1.734 1.734 0 0 0 9.31 6.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387a1.734 1.734 0 0 0 1.097-1.097l.387-1.162zM13.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.156 1.156 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.156 1.156 0 0 0-.732-.732l-.774-.258a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732L13.863.099z"/>
+                            </svg>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero-devices">
+            <div class="container text-center">
+                <h1>Device Monitoring</h1>
+                <p class="lead mb-0">Track and manage your connected devices and network components</p>
+            </div>
+        </section>
+
+        <section class="py-5">
+            <div class="container">
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
+                    <!-- Server Device Card -->
+                    <div class="col">
+                        <div class="card device-card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="display-6 text-primary">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-server" viewBox="0 0 16 16">
+                                            <path d="M1.333 2.667C1.333 1.194 2.527.5 4 .5c1.473 0 2.667.694 2.667 2.167v.333C6.667 4.306 5.473 5 4 5c-1.473 0-2.667-.694-2.667-2.167V2.667z"/>
+                                            <path d="M1.333 5.334v.333c0 1.473.694 2.667 2.167 2.667h4.666c1.473 0 2.167-.694 2.167-2.167v-.333l-.625.208.005-.208c0 1.473.694 2.667 2.167 2.667h4.666c1.473 0 2.167-.694 2.167-2.167v-.333C14.667 3.861 13.473 3.167 12 3.167c-1.473 0-2.667.694-2.667 2.167v.333L9.708 5.75l-.003-.041c0 .694.139 1.125.416 1.5h-2.5c.277-.375.416-.806.416-1.5l-.003-.041L7.708 5.75l-.003-.041c0 .694.139 1.125.416 1.5H3.333c.277-.375.416-.806.416-1.5L3.747 5.708l-.002-.041c0 .694.139 1.125.416 1.5H2.083c-.277-.375-.416-.806-.416-1.5l-.003-.041.628-.21z"/>
+                                            <path d="M8.5.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 1 0V1a.5.5 0 0 0-.5-.5z"/>
+                                            <path d="M12 .5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 1 0V1a.5.5 0 0 0-.5-.5z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="status-online">● Online</div>
+                                </div>
+                                <h5 class="card-title card-title">Monitor Server</h5>
+                                <p class="card-text flex-grow-1">Primary server hosting monitoring and management services</p>
+                                <div class="mt-auto">
+                                    <small class="text-muted">Last seen: Just now</small><br>
+                                    <small class="text-muted">CPU: 45% | Memory: 62% | Disk: 78%</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Network Switch Card -->
+                    <div class="col">
+                        <div class="card device-card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="display-6 text-primary">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-hdd-network" viewBox="0 0 16 16">
+                                            <path d="M4.5 5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1zM3 4.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0zm2 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0zm-2 2a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0zm1 1.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1zm2 0a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+                                            <path d="M2 2a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h1v2H2a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2h-1V7h1a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2zm13 2v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1zm0 7v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1z"/>
+                                            <path d="M14 7v2H3V7h11z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="status-online">● Online</div>
+                                </div>
+                                <h5 class="card-title">Network Switch</h5>
+                                <p class="card-text flex-grow-1">Managed Ethernet switch providing network connectivity</p>
+                                <div class="mt-auto">
+                                    <small class="text-muted">Last seen: 2 minutes ago</small><br>
+                                    <small class="text-muted">Ports: 24 active | Speed: 1 Gbps</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Storage Array Card -->
+                    <div class="col">
+                        <div class="card device-card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="display-6 text-primary">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-device-ssd" viewBox="0 0 16 16">
+                                            <path d="M4.75 4a.75.75 0 0 0-.75.75v3.5c0 .414.336.75.75.75h6.5a.75.75 0 0 0 .75-.75v-3.5A.75.75 0 0 0 11.25 4H4.75ZM5 8V5h6v3H5Z"/>
+                                            <path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2Zm11 1a1 1 0 0 1 1 1v.5a.5.5 0 0 1-1 0V4a1 1 0 0 1 1-1Zm0 3a1 1 0 0 1 1 1v.5a.5.5 0 0 1-1 0V7a1 1 0 0 1 1-1Zm-10 1a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 7Z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="status-online">● Online</div>
+                                </div>
+                                <h5 class="card-title">Storage Array</h5>
+                                <p class="card-text flex-grow-1">Enterprise storage system with RAID-6 configuration</p>
+                                <div class="mt-auto">
+                                    <small class="text-muted">Last seen: 1 hour ago</small><br>
+                                    <small class="text-muted">Capacity: 12TB | Used: 8.2TB | IOPS: 2,450</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- UPS Backup Card -->
+                    <div class="col">
+                        <div class="card device-card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="display-6 text-primary">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-battery-full" viewBox="0 0 16 16">
+                                            <path d="M2 6h10v4H2V6z"/>
+                                            <path d="M2 4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H2zm0 1h10a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm14 3a1.5 1.5 0 0 1-1.5 1.5v-3A1.5 1.5 0 0 1 16 8z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="status-online">● Online</div>
+                                </div>
+                                <h5 class="card-title">UPS Backup</h5>
+                                <p class="card-text flex-grow-1">Uninterruptible power supply with battery backup</p>
+                                <div class="mt-auto">
+                                    <small class="text-muted">Last seen: 15 minutes ago</small><br>
+                                    <small class="text-muted">Battery: 92% | Load: 45%</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security Camera Card -->
+                    <div class="col">
+                        <div class="card device-card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="display-6 text-primary">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-camera-video" viewBox="0 0 16 16">
+                                            <path fill-rule="evenodd" d="M0 5a2 2 0 0 1 4.5-1.5h11A2.5 2.5 0 0 1 18 5.5v7a2.5 2.5 0 0 1-2.5 2.5h-11A2 2 0 0 1 0 12.5V5zm4.5 1a.5.5 0 0 0-1 0v6.5A1 1 0 0 0 4.5 13h11c.81 0 1.5-.69 1.5-1.5v-7A1.5 1.5 0 0 0 15.5 3h-11z"/>
+                                            <path d="M10.354 8.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708z"/>
+                                            <path fill-rule="evenodd" d="M8.646 5.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 0-.708-.708l-3 3a.5.5 0 0 0 0 .708z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="status-warning">● Maintenance</div>
+                                </div>
+                                <h5 class="card-title">Security Camera</h5>
+                                <p class="card-text flex-grow-1">IP-based security camera system for facility monitoring</p>
+                                <div class="mt-auto">
+                                    <small class="text-muted">Last seen: 4 hours ago</small><br>
+                                    <small class="text-muted">Firmware: v2.1.4 | Status: Recording</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Environmental Sensor Card -->
+                    <div class="col">
+                        <div class="card device-card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="display-6 text-primary">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-thermometer-half" viewBox="0 0 16 16">
+                                            <path d="M6 2a1 1 0 0 0-1 1v8.5a.5.5 0 0 0 .5.5h1.5a.5.5 0 0 0 .5-.5V3a1 1 0 0 0-1-1zM9 2a1 1 0 0 0-1 1v8.5A1.5 1.5 0 0 0 9.5 13h1A1.5 1.5 0 0 0 12 11.5V3a1 1 0 0 0-1-1z"/>
+                                            <path d="M9.5 13a.5.5 0 0 1-.5-.5V6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v6.5a.5.5 0 0 1-.5.5h-1zm.5-6a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.5a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V7z"/>
+                                         </svg>
+                                    </div>
+                                    <div class="status-online">● Online</div>
+                                </div>
+                                <h5 class="card-title">Environmental Sensor</h5>
+                                <p class="card-text flex-grow-1">Temperature and humidity monitoring for server room</p>
+                                <div class="mt-auto">
+                                    <small class="text-muted">Last seen: 30 seconds ago</small><br>
+                                    <small class="text-muted">Temp: 22°C | Humidity: 45% | Status: Normal</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Device Management Actions -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Device Management</h5>
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <button class="btn btn-outline-primary w-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle me-2" viewBox="0 0 16 16">
+                                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 0 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                                        </svg>
+                                        Add Device
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-outline-secondary w-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear me-2" viewBox="0 0 16 16">
+                                            <path d="M8.837 1.626c-.246-.835-1.428-.835-1.674 0l-.094.319A1.873 1.873 0 0 0 5.377 3.09l-.298-.017c-.878 0-1.109 1.093-.52 1.549l.263.22c.187.156.31.43.31.709v.001c0 .278-.123.553-.31.709l-.263.22c-.59.456-.358 1.548.52 1.549l.298-.017a1.873 1.873 0 0 0 1.362 1.145l.094.319c.246.835 1.428.835 1.674 0l.094-.319a1.873 1.873 0 0 0 1.362-1.145l.298.017c.878 0 1.109-1.093.52-1.549l-.263-.22c-.187-.156-.31-.43-.31-.709v-.001c0-.278.123-.553.31-.709l.263-.22c.59-.456.358-1.548-.52-1.549l-.298.017a1.873 1.873 0 0 0-1.362-1.145l-.094-.319zM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                        </svg>
+                                        Configure
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-outline-info w-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bar-chart me-2" viewBox="0 0 16 16">
+                                            <path d="M4 11H2v3h2v-3zm5-4H7v7h2V7zm5-5h-2v12h2V2zm-2-1a1 1 0 0 0-1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 0-1-1V2a1 1 0 0 0-1-1H0V1a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1h-1V1a1 1 0 0 0-1-1H6zm5.5 0a.5.5 0 0 1 .5.5v12a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5V1.5A.5.5 0 0 1 1.5 1h12z"/>
+                                        </svg>
+                                        Reports
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-outline-warning w-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle me-2" viewBox="0 0 16 16">
+                                            <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.982 1.767h13.713c.889 0 1.438-.99.982-1.767L8.982 1.566z"/>
+                                            <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 0-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z"/>
+                                        </svg>
+                                        Alerts
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2025 Ready-1 LLC. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Dark mode toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+
+        // Check for saved theme preference or default to 'light'
+        const currentTheme = localStorage.getItem('bs-theme') || 'auto';
+        htmlElement.setAttribute('data-bs-theme', currentTheme);
+
+        themeToggle.addEventListener('click', function() {
+            const currentTheme = htmlElement.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            htmlElement.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('bs-theme', newTheme);
+
+            // Update icon
+            updateIcon(newTheme);
+        });
+
+        function updateIcon(theme) {
+            const iconSvg = themeToggle.querySelector('svg');
+            if (theme === 'dark') {
+                iconSvg.innerHTML = '<path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 0 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278zM4.858 1.311A7.269 7.269 0 0 0 1.025 7.71c0 4.02 3.279 7.276 7.319 7.276a7.316 7.316 0 0 0 5.205-2.162c-.337.042-.68.063-1.029.063-4.61 0-8.343-3.714-8.343-8.29 0-1.167.242-2.278.681-3.286z"/>';
+                iconSvg.className = 'bi bi-moon';
+            } else {
+                iconSvg.innerHTML = '<path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 0 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278zM4.858 1.311A7.269 7.269 0 0 0 1.025 7.71c0 4.02 3.279 7.276 7.319 7.276a7.316 7.316 0 0 0 5.205-2.162c-.337.042-.68.063-1.029.063-4.61 0-8.343-3.714-8.29 0-1.167.242-2.278.681-3.286z"/><path d="M10.794 3.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387a1.734 1.734 0 0 0-1.097 1.097l-.387 1.162a.217.217 0 0 1-.412 0l-.387-1.162A1.734 1.734 0 0 0 9.31 6.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387a1.734 1.734 0 0 0 1.097-1.097l.387-1.162zM13.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.156 1.156 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.156 1.156 0 0 0-.732-.732l-.774-.258a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732L13.863.099z"/>';
+                iconSvg.className = 'bi bi-moon-stars';
+            }
+        }
+
+        // Set initial icon
+        updateIcon(htmlElement.getAttribute('data-bs-theme'));
+    </script>
+</body>
+</html>
