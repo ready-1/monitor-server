@@ -47,8 +47,8 @@ dns_servers:
   - 1.1.1.1
   - 8.8.8.8
 ssh_port: 22
-ssh_allow_users: "monitor"
-cockpit_version: "337-1~bpo12+1"
+ssh_allow_users: 'monitor'
+cockpit_version: '337-1~bpo12+1'
 ```
 
 Sensitive values (e.g., sudo/become credentials, Nginx secrets) belong in `group_vars/all/become_vars.yml`, which is encrypted with Ansible Vault. Refer to `VAULT_USAGE.md` for editing instructions.
@@ -66,11 +66,66 @@ chmod 600 .vault_password
 ls ~/.ssh/id_monitor_ed25519 ~/.ssh/id_monitor_ed25519.pub
 ```
 
-The public key is automatically deployed to the target host during the bootstrap role.
+The public key is automatically configured during network setup.
 
 ---
 
-## 5. Bootstrap the Host (DHCP → Static IP)
+## 5. Deployment Workflow (Recommended)
+
+For fresh VM deployments, use this streamlined workflow:
+
+### Step 1: Clear SSH Keychain
+```bash
+# Clear all loaded SSH keys to avoid authentication conflicts
+ssh-add -D
+```
+
+### Step 2: Transfer Setup Script
+```bash
+# Copy the network setup script to the fresh VM (replace <dhcp-ip> with actual IP)
+scp ./setup_network.sh monitor@<dhcp-ip>:/home/monitor/
+```
+
+### Step 3: Configure VM Network & SSH
+```bash
+# SSH to the VM using password authentication
+ssh monitor@<dhcp-ip>
+
+# Make script executable and run network setup
+sudo chmod +x /home/monitor/setup_network.sh
+sudo /home/monitor/setup_network.sh
+```
+
+The script will:
+- Install all required network dependencies
+- Configure static IP (10.211.55.99)
+- Set up SSH keys and harden the configuration
+- Configure firewall and NTP
+
+### Step 4: Reconnect with Key Authentication
+```bash
+# Exit SSH session and restore your keychain
+exit
+eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_monitor_ed25519
+
+# Connect to the configured static IP
+ssh monitor@10.211.55.99
+```
+
+### Step 5: Deploy Monitor Stack
+```bash
+# Test Ansible connectivity
+ansible -i inventory.ini all -m ping
+
+# Run full deployment
+ansible-playbook -i inventory.ini site.yml
+```
+
+---
+
+## 6. Legacy Bootstrap Method (Deprecated)
+
+**Note**: The old bootstrap method with `bootstrap.yml` is deprecated but still available for reference:
 
 ```bash
 ansible-playbook -i bootstrap_inventory.ini bootstrap.yml
@@ -87,7 +142,7 @@ When the playbook finishes, the host is reachable over the static IP specified i
 
 ---
 
-## 6. Run the Main Provisioning Playbook
+## 7. Run the Main Provisioning Playbook
 
 ```bash
 ansible-playbook -i inventory.ini site.yml
@@ -99,16 +154,18 @@ Roles executed in order:
 2. `ssh-hardening`
 3. `cockpit`
 4. `nginx-proxy`
+5. `website`
 
 Key outcomes:
 - Essential packages installed and validated
 - SSH hardened and UFW configured (ports 22/80/443/9090 open)
-- Cockpit web console running on `https://<static-ip>:9090`
+- Cockpit web console running on `https://10.211.55.99:9090`
 - Nginx reverse proxy installed from the official repo with self-signed TLS
+- Custom website with Bootstrap 5, responsive design, and dark mode toggle
 
 ---
 
-## 7. Check Mode and Validation Tags (Optional)
+## 8. Check Mode and Validation Tags (Optional)
 
 Dry run:
 
@@ -122,7 +179,7 @@ Validation only:
 ansible-playbook -i inventory.ini site.yml --tags validate
 ```
 
-Cockpit role test harness:
+Test Cockpit functionality:
 
 ```bash
 ansible-playbook -i inventory.ini test_cockpit.yml
@@ -130,10 +187,10 @@ ansible-playbook -i inventory.ini test_cockpit.yml
 
 ---
 
-## 8. Next Steps
+## 9. Next Steps
 
+- **Access your server**: https://10.211.55.99
+- **Cockpit console**: https://10.211.55.99:9090
 - Review `docs/NETWORKING.md` if the static-IP swap needs adjustment.
 - Consult `docs/SECURITY.md` before exposing the host to untrusted networks.
 - Use `docs/TROUBLESHOOTING.md` if any validation steps fail.
-
-For a deeper architectural overview, start with `README.md`.

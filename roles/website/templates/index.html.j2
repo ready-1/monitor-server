@@ -17,10 +17,10 @@
         }
 
         .hero-hero {
-            min-height: 60vh;
+            min-height: 35vh;
             display: flex;
             align-items: center;
-            background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+            background: linear-gradient(135deg, #1e3a5f 0%, #2c4a6b 100%);
             color: white;
         }
 
@@ -50,7 +50,7 @@
                         <a class="nav-link" href="devices.html">Devices</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/cockpit" target="_blank">Cockpit Console</a>
+                        <a class="nav-link" href="https://{{ ansible_host }}:9090" target="_blank">Cockpit Console</a>
                     </li>
                     <li class="nav-item">
                         <button class="btn btn-link nav-link" id="theme-toggle">
@@ -72,7 +72,7 @@
                 <p class="lead mb-4">Your centralized server management and monitoring hub</p>
                 <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
                     <a href="devices.html" class="btn btn-outline-light btn-lg px-4">Browse Devices</a>
-                    <a href="/cockpit" target="_blank" class="btn btn-light btn-lg px-4">Open Cockpit Console</a>
+                    <a href="https://{{ ansible_host }}:9090" target="_blank" class="btn btn-light btn-lg px-4">Open Cockpit Console</a>
                 </div>
             </div>
         </section>
@@ -90,9 +90,9 @@
                                         <path d="M14 7v2H3V7h11z"/>
                                     </svg>
                                 </div>
-                                <h5 class="card-title">Server Monitoring</h5>
-                                <p class="card-text">Monitor your server resources, services, and performance metrics in real-time.</p>
-                                <a href="/cockpit" target="_blank" class="btn btn-primary">Access Monitoring</a>
+                                <h5 class="card-title">Server Management</h5>
+                                <p class="card-text">Access comprehensive server administration and monitoring tools.</p>
+                                <a href="https://{{ ansible_host }}:9090" target="_blank" class="btn btn-primary">Access Monitoring</a>
                             </div>
                         </div>
                     </div>

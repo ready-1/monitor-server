@@ -19,8 +19,8 @@
     dest: /usr/share/nginx/html/css/
     mode: '0644'
   with_fileglob:
-    - files/css/bootstrap*.css
-    - files/css/bootstrap*.css.map
+    - files/bootstrap*.css
+    - files/bootstrap*.css.map
 
 - name: Copy Bootstrap JS files
   copy:

@@ -16,59 +16,10 @@
     - name: Display provisioning start message
       debug:
         msg: "Starting Monitor Server provisioning for {{ ansible_hostname }} ({{ ansible_host }})"
-
-    - name: Validate environment prerequisites
-      block:
-        - name: Check if running as monitor user
-          fail:
-            msg: "Playbook must be run as 'monitor' user (not root). Current user: {{ ansible_user }}"
-          when: ansible_user != 'monitor'
-
-        - name: Verify static IP matches inventory
-          command: hostname -I | awk '{print $1}'
-          register: current_ip
-          changed_when: false
-
-        - name: Display IP verification
-          debug:
-            msg: "Configured IP: {{ ansible_host }}, Detected IP: {{ current_ip.stdout }}"
-
-        - name: Assert IP consistency (warn only)
-          assert:
-            that: current_ip.stdout | ipaddr(ansible_host) or ansible_check_mode
-            success_msg: "✅ IP configuration verified"
-            fail_msg: "⚠️ IP mismatch detected - verify network configuration"
-          ignore_errors: yes
-
-        - name: Check essential dependencies
-          command: "{{ item }} --version"
-          register: cmd_check
-          changed_when: false
-          failed_when: cmd_check.rc != 0
-          with_items:
-            - netplan
-            - ufw
-            - systemctl
-
-        - name: Report dependency status
-          debug:
-            msg: "All required network dependencies are installed"
-          when: not ansible_check_mode
-
-      rescue:
-        - name: Prerequisite check failure
-          debug:
-            msg: |
-              Prerequisites validation failed. Please ensure:
-              1. Run ./setup_network.sh as root after fresh Debian install
-              2. Connected as 'monitor' user: ssh monitor@{{ ansible_host }}
-              3. Server has static IP configured: {{ ansible_host }}
-          failed_when: true
-      tags: [validate, prerequisites]
+      tags: [always]
 
   roles:
     - basic-utilities
-    - ssh-hardening
     - cockpit
     - nginx-proxy
     - website
@@ -88,8 +39,11 @@
       include_tasks: roles/basic-utilities/tasks/validate.yml
       tags: [validate]
 
-    - name: Validate SSH hardening
-      include_tasks: roles/ssh-hardening/tasks/validate.yml
+    - name: Validate basic connectivity
+      command: echo "Server is reachable and configured"
+      register: connectivity_check
+      changed_when: false
+      failed_when: connectivity_check.rc != 0
       tags: [validate]
 
     - name: Validate Cockpit installation

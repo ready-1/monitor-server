@@ -18,7 +18,7 @@ GATEWAY="10.211.55.1"
 DNS_SERVERS="1.1.1.1,8.8.8.8"
 
 # SSH Configuration
-SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINtF9YR+Qp8YxSkKv+V8Fe4yAoSlN/1cRLMN1CLNevFr bob@mac"
+SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAlpoxkVdvq3DjLp5kyVn2N7sNb4Lcr2LZTvRkIaZI/b monitor's general ed25519 ID"
 
 # Colors for output
 RED='\033[0;31m'
@@ -48,10 +48,40 @@ echo_info "Gateway: $GATEWAY"
 
 # Step 1: Update package lists and install required network packages
 echo_info "Installing network dependencies..."
-apt update
+
+# Fix clock sync issues that can prevent apt from working
+echo_info "Synchronizing system clock..."
+apt install -y systemd-timesyncd
+timedatectl set-ntp true
+
+# Wait for NTP to sync
+sleep 3
+
+# Check if clock is now roughly synced (within a day)
+CURRENT_TIME=$(date +%s)
+EXPECTED_TIME=$(curl -s --max-time 5 http://worldtimeapi.org/api/timezone/America/Los_Angeles.txt 2>/dev/null | grep unixtime | cut -d'=' -f2 || echo "")
+
+if [ -n "$EXPECTED_TIME" ]; then
+    TIME_DIFF=$((CURRENT_TIME - EXPECTED_TIME))
+    TIME_DIFF=${TIME_DIFF#-}  # Absolute value
+
+    if [ "$TIME_DIFF" -gt 86400 ]; then  # More than 24 hours off
+        echo_warning "System clock appears to be significantly off - will use relaxed apt validation"
+        APT_OPTIONS="-o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false"
+    else
+        echo_success "System clock appears synchronized"
+        APT_OPTIONS=""
+    fi
+else
+    echo_warning "Could not verify clock sync - using relaxed apt validation"
+    APT_OPTIONS="-o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false"
+fi
+
+# Update package lists with relaxed validation if needed
+apt update $APT_OPTIONS
 
 # Install complete netplan ecosystem
-apt install -y \
+apt install -y $APT_OPTIONS \
     netplan.io \
     nplan \
     network-manager \
@@ -276,7 +306,7 @@ if grep -q "^# Temporary setup configuration" /etc/ssh/sshd_config && [ -f /home
     cat >> /etc/ssh/sshd_config << EOF
 
 # Hardened production configuration
-MaxAuthTries 3
+MaxAuthTries 8
 PasswordAuthentication no
 ChallengeResponseAuthentication no
 PermitRootLogin no
