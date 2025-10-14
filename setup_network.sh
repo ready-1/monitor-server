@@ -68,6 +68,29 @@ apt install -y \
 
 echo_success "Network dependencies installed"
 
+# Step 1.5: Temporarily relax SSH configuration for setup
+echo_info "Temporarily relaxing SSH configuration for initial setup..."
+if ! grep -q "^# Temporary setup configuration" /etc/ssh/sshd_config; then
+    # Backup current SSH configuration
+    cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup.$(date +%Y%m%d_%H%M%S)
+
+    # Add temporary relaxed settings
+    cat >> /etc/ssh/sshd_config << EOF
+
+# Temporary setup configuration - will be removed after key authentication is configured
+MaxAuthTries 20
+PasswordAuthentication yes
+ChallengeResponseAuthentication yes
+PermitRootLogin yes
+EOF
+
+    # Reload SSH service
+    systemctl reload ssh
+    echo_success "SSH temporarily configured for setup"
+else
+    echo_info "SSH already temporarily configured"
+fi
+
 # Step 2: Detect network interface
 echo_info "Detecting primary network interface..."
 INTERFACE=$(ip -br a | grep -v lo | grep UP | head -1 | awk '{print $1}')
@@ -241,7 +264,38 @@ else
     echo_warning "NTP synchronization not yet confirmed (may require more time)"
 fi
 
-# Step 13: Final system validation
+# Step 13: Final SSH hardening and system validation
+echo_info "Finalizing SSH configuration and system validation..."
+
+# Harden SSH configuration now that key authentication is established
+echo_info "Hardening SSH configuration for production use..."
+if grep -q "^# Temporary setup configuration" /etc/ssh/sshd_config && [ -f /home/monitor/.ssh/authorized_keys ]; then
+    # Remove temporary relaxed settings
+    sed -i '/^# Temporary setup configuration/,/^PermitRootLogin yes$/d' /etc/ssh/sshd_config
+
+    # Add hardened settings
+    cat >> /etc/ssh/sshd_config << EOF
+
+# Hardened production configuration
+MaxAuthTries 3
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+PermitRootLogin no
+PermitEmptyPasswords no
+
+# Key-based authentication only
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+EOF
+
+    # Reload SSH service with hardened configuration
+    systemctl reload ssh
+    echo_success "SSH configuration hardened for production"
+else
+    echo_warning "SSH hardening skipped - check that SSH keys are properly configured"
+fi
+
+# Step 14: Final system validation
 echo_info "Performing final system validation..."
 
 # Check required commands
@@ -254,6 +308,15 @@ for cmd in "${REQUIRED_COMMANDS[@]}"; do
     fi
 done
 
+# Verify SSH key authentication is working
+echo_info "Testing SSH key authentication..."
+if [ -f /home/monitor/.ssh/authorized_keys ]; then
+    SSH_KEY_COUNT=$(wc -l < /home/monitor/.ssh/authorized_keys)
+    echo_success "✓ $SSH_KEY_COUNT SSH key(s) configured"
+else
+    echo_warning "✗ No SSH authorized keys file found"
+fi
+
 # Display final network information
 echo
 echo_success "=== Network Setup Complete ==="
@@ -261,12 +324,15 @@ echo_info "New IP Address: $STATIC_IP"
 echo_info "Network Interface: $INTERFACE"
 echo_info "Gateway: $GATEWAY"
 echo_info "DNS Servers: $DNS_SERVERS"
-echo_info "SSH User: monitor"
+echo_info "SSH User: monitor (key-only authentication)"
 echo
 echo_info "Next steps:"
 echo "  1. Exit this session and reconnect as 'monitor' user:"
 echo "     ssh monitor@$STATIC_IP"
 echo "  2. Test Ansible connectivity: ansible -i inventory.ini all -m ping"
 echo "  3. Run deployment: ansible-playbook -i inventory.ini site.yml"
+echo
+echo_warning "⚠️  Make sure to re-enable your Mac's SSH keychain after successful setup:"
+echo_warning "   eval \"\$(ssh-agent -s)\" && ssh-add ~/.ssh/id_monitor_ed25519"
 
 echo_success "Network preparation complete! Server is ready for Ansible deployment."
