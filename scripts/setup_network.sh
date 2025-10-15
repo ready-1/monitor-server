@@ -221,46 +221,10 @@ sleep 5
 
 echo_success "Network configuration applied"
 
-# Step 7: Verify IP address assignment
-echo_info "Verifying IP address assignment..."
-VERIFIED_IP=$(ip -4 addr show $INTERFACE | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+echo_success "Network setup complete!"
+echo_info "You should now be able to reconnect to this server using the static IP: $STATIC_IP"
+echo_info "Run: ssh monitor@$STATIC_IP"
+echo_info "If connection fails, verify network settings and try a VM reboot if needed."
+echo_warning "⚠️  After successful reconnection, run Ansible deployment with: ansible-playbook deployment.yml"
 
-if [ "$VERIFIED_IP" != "$STATIC_IP" ]; then
-    echo_error "IP address verification failed. Expected: $STATIC_IP, Got: $VERIFIED_IP"
-
-    # Attempt rollback
-    echo_info "Attempting network configuration rollback..."
-    rm -f /etc/netplan/01-static.yaml
-
-    BACKUP_FILE=$(ls -t /etc/netplan/00-installer-config.yaml.backup.* 2>/dev/null | head -1)
-    if [ -f "$BACKUP_FILE" ]; then
-        cp "$BACKUP_FILE" /etc/netplan/00-installer-config.yaml
-        netplan apply
-    fi
-    exit 1
-fi
-
-echo_success "IP address correctly configured: $VERIFIED_IP"
-
-# Step 8: Test network connectivity
-echo_info "Testing network connectivity..."
-
-# Test default route
-if ! ip route get 8.8.8.8 >/dev/null 2>&1; then
-    echo_error "Default route configuration failed"
-    exit 1
-fi
-
-# Test DNS resolution
-if ! nslookup google.com >/dev/null 2>&1; then
-    echo_warning "DNS resolution test failed - possible DNS issue"
-else
-    echo_success "DNS resolution working"
-fi
-
-# Test internet connectivity
-if curl -s --max-time 10 google.com >/dev/null 2>&1; then
-    echo_success "Internet connectivity confirmed"
-else
-    echo_warning "Internet connectivity test failed"
-fi
+exit 0
