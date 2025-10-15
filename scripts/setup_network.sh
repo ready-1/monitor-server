@@ -206,23 +206,9 @@ echo
 # Disable cleanup trap for reboot (prevents false failure messages)
 trap '' EXIT
 
-# Clear screen for clean countdown display
-clear
-
-# Clean countdown display
-echo_info "Press Enter to reboot immediately, or wait for automatic countdown..."
-for i in {15..1}; do
-    printf "\rReboot in %2d seconds... " "$i"
-    read -t 1 -n 1 input 2>/dev/null
-    if [ $? -eq 0 ]; then
-        echo
-        echo_info "Rebooting immediately..."
-        sleep 2
-        reboot
-    fi
-done
-echo
-
-echo_success "Rebooting now to activate static IP configuration..."
-sleep 1
+echo_success "Network configuration complete!"
+echo_info "Press Enter to reboot now and activate the new static IP configuration..."
+read -r input
+echo_info "Rebooting now to activate new network configuration..."
+sleep 2
 reboot
