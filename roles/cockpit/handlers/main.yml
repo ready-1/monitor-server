@@ -1,7 +1,0 @@
----
-# handlers/main.yml for cockpit role
-
-- name: restart cockpit
-  service:
-    name: cockpit
-    state: restarted

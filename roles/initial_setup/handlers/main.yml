@@ -1,8 +1,0 @@
----
-# handlers file for initial_setup role
-
-- name: Restart SSH service
-  service:
-    name: ssh
-    state: restarted
-  become: yes
