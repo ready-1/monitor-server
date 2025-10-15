@@ -65,7 +65,7 @@ echo "  Gateway: $GATEWAY"
 echo "  DNS Servers: $DNS_SERVERS"
 echo "  SSH Public Key: ${SSH_PUBLIC_KEY:0:50}..."
 
-echo "Configuration complete - ready for network setup"
+echo "Configuration complete - ready for server setup"
 
 # Colors for output
 RED='\033[0;31m'
@@ -195,19 +195,47 @@ fi
 
 echo_success "Netplan syntax is valid"
 
-echo_success "Network configuration applied successfully!"
+# Step 6: Configure SSH user and access
+echo_info "Setting up monitor user and SSH access..."
+
+# Create monitor user with sudo privileges
+if ! id -u monitor >/dev/null 2>&1; then
+    useradd -m -s /bin/bash monitor
+    usermod -aG sudo monitor
+    echo_info "Created monitor user with sudo access"
+else
+    echo_info "Monitor user already exists"
+fi
+
+# Create .ssh directory for monitor user
+mkdir -p /home/monitor/.ssh
+chmod 700 /home/monitor/.ssh
+chown monitor:monitor /home/monitor/.ssh
+
+# Install SSH public key if provided
+if [ -n "$SSH_PUBLIC_KEY" ]; then
+    echo "$SSH_PUBLIC_KEY" > /home/monitor/.ssh/authorized_keys
+    chmod 600 /home/monitor/.ssh/authorized_keys
+    chown monitor:monitor /home/monitor/.ssh/authorized_keys
+    echo_success "SSH public key installed for monitor user"
+else
+    echo_warning "No SSH public key provided - key authentication will not be available without manual setup"
+fi
+
+echo_success "SSH user configuration complete"
+
+echo_success "Network and SSH configuration applied successfully!"
 echo_info "Static IP configured: $STATIC_IP on interface $INTERFACE"
+echo_info "Monitor user created with SSH key authentication ready"
 echo
 
-echo_warning "⚠️  Server will reboot in 15 seconds to activate new network configuration"
-echo_info "Press Enter to reboot immediately..."
+echo_warning "⚠️  Server will reboot to activate new network configuration"
+echo_info "Press Enter to reboot now..."
 echo
 
 # Disable cleanup trap for reboot (prevents false failure messages)
 trap '' EXIT
 
-echo_success "Network configuration complete!"
-echo_info "Press Enter to reboot now and activate the new static IP configuration..."
 read -r input
 echo_info "Rebooting now to activate new network configuration..."
 sleep 2
