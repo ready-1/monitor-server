@@ -173,6 +173,10 @@ network:
         addresses: [$(echo $DNS_SERVERS | sed 's/,/","/g' | sed 's/^/"/;s/$/"/')]
 EOF
 
+# Fix file permissions for netplan configuration
+chmod 600 /etc/netplan/01-static.yaml
+chown root:root /etc/netplan/01-static.yaml
+
 echo_success "Netplan configuration created"
 
 # Step 5: Verify netplan syntax
@@ -193,6 +197,23 @@ echo_success "Netplan syntax is valid"
 
 # Step 6: Apply netplan configuration
 echo_info "Applying network configuration..."
+
+# Ensure systemd-networkd is running and enabled
+echo_info "Ensuring systemd-networkd service is properly configured..."
+systemctl enable systemd-networkd
+systemctl start systemd-networkd
+
+# Wait for systemd-networkd to start properly
+sleep 2
+
+# Try to reload systemd-networkd first
+echo_info "Attempting systemd-networkd reload..."
+if systemctl is-active --quiet systemd-networkd; then
+    systemctl reload systemd-networkd 2>/dev/null || true
+    sleep 2
+fi
+
+# Apply netplan configuration
 netplan apply
 
 # Give network time to settle
