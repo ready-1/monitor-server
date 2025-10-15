@@ -6,10 +6,12 @@ Changelog maintained with git commit indexing for traceability.
 ## [Unreleased]
 
 ### Stage Tracking
-- **Stage 1 branch created** [current]
-  - Branch `stage-1-network-setup` established from main
-  - Moved `setup_network.sh` to `scripts/` directory for organization
-  - Ready for enhanced network configuration script development
+- **Stage 1 network script enhancement complete** [950a0d2]
+  - Added interactive configuration with optional defaults file support
+  - Created `network-config.defaults.example` for flypack pre-configuration
+  - Preserved backward compatibility while improving user experience
+  - Atomic commit: focused solely on user interaction improvements (< 500 lines)
+  - Memory bank and changelog updated for current progress tracking
 
 ## [2025-10-15]
 
