@@ -195,7 +195,6 @@ fi
 
 echo_success "Netplan syntax is valid"
 
-echo
 echo_success "Network configuration applied successfully!"
 echo_info "Static IP configured: $STATIC_IP on interface $INTERFACE"
 echo
@@ -207,14 +206,19 @@ echo
 # Disable cleanup trap for reboot (prevents false failure messages)
 trap '' EXIT
 
+# Clear screen for clean countdown display
+clear
+
 # Clean countdown display
 for i in {15..1}; do
-    printf "\rReboot in %2d seconds... Press Enter to reboot immediately" "$i"
+    printf "\r%-${COLUMNS}s" "Reboot in $i seconds... Press Enter to reboot immediately                  "
     read -t 1 -n 1 input 2>/dev/null
     if [ $? -eq 0 ]; then
         echo
         echo_info "Rebooting immediately..."
+        sleep 2
         reboot
+        exit 0
     fi
 done
 echo
