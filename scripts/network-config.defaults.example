@@ -1,0 +1,16 @@
+# Network Configuration Defaults for setup_network.sh
+# Copy this file to network-config.defaults and customize for your flypack
+
+# Network Settings
+STATIC_IP="10.211.55.99"
+NETMASK="24"
+GATEWAY="10.211.55.1"
+DNS_SERVERS="1.1.1.1,8.8.8.8"
+
+# SSH Configuration (defaults to embedded key if not specified)
+SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAlpoxkVdvq3DjLp5kyVn2N7sNb4Lcr2LZTvRkIaZI/b monitor's general ed25519 ID"
+
+# Flypack-Specific Notes
+# - STATIC_IP: Must be unique per flypack in broadcast network segment
+# - DNS_SERVERS: Use broadcast-facility specific DNS if available
+# - SSH_PUBLIC_KEY: Replace with your organization's key for production

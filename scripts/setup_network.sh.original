@@ -6,63 +6,19 @@
 #
 # Usage: ./setup_network.sh
 #
-# Optional: Create network-config.defaults file with variables:
-# STATIC_IP="10.211.55.99"
-# NETMASK="24"
-# GATEWAY="10.211.55.1"
-# DNS_SERVERS="1.1.1.1,8.8.8.8"
-#
 # Author: Ready-1 LLC
 #
 
 set -e  # Exit on any error
 
-# Load configuration defaults if available
-CONFIG_FILE="$(dirname "$0")/network-config.defaults"
+# Network configuration (should match group_vars/all.yml)
+STATIC_IP="10.211.55.99"
+NETMASK="24"
+GATEWAY="10.211.55.1"
+DNS_SERVERS="1.1.1.1,8.8.8.8"
 
-# Network configuration (interactive with optional defaults file)
-if [ -f "$CONFIG_FILE" ]; then
-    echo_info "Loading defaults from $CONFIG_FILE..."
-    source "$CONFIG_FILE" 2>/dev/null || true
-else
-    echo_info "No defaults file found at $CONFIG_FILE - proceeding with interactive setup"
-fi
-
-# Function to prompt with optional default
-prompt_with_default() {
-    local var_name="$1"
-    local prompt_text="$2"
-    local current_value="${!var_name}"
-
-    if [ -n "$current_value" ]; then
-        echo -n "$prompt_text [$current_value]: "
-        read -r input
-        if [ -z "$input" ]; then
-            return 0  # Keep current value
-        else
-            eval "$var_name=\"$input\""
-        fi
-    else
-        echo -n "$prompt_text: "
-        read -r input
-        eval "$var_name=\"$input\""
-    fi
-}
-
-# Interactive network configuration
-echo_info "Network Configuration (press Enter to keep defaults, or enter new values)"
-echo_info "Leave blank to skip validation (will be tested later)"
-
-prompt_with_default "STATIC_IP" "Enter static IP address"
-prompt_with_default "NETMASK" "Enter netmask (default 24)"
-[ -z "$NETMASK" ] && NETMASK="24"
-prompt_with_default "GATEWAY" "Enter gateway IP"
-prompt_with_default "DNS_SERVERS" "Enter DNS servers (comma-separated)"
-
-# Provide defaults for SSH if not set
-if [ -z "$SSH_PUBLIC_KEY" ]; then
-    SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAlpoxkVdvq3DjLp5kyVn2N7sNb4Lcr2LZTvRkIaZI/b monitor's general ed25519 ID"
-fi
+# SSH Configuration
+SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAlpoxkVdvq3DjLp5kyVn2N7sNb4Lcr2LZTvRkIaZI/b monitor's general ed25519 ID"
 
 # Colors for output
 RED='\033[0;31m'
