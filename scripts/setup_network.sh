@@ -195,36 +195,24 @@ fi
 
 echo_success "Netplan syntax is valid"
 
-# Step 6: Apply netplan configuration
-echo_info "Applying network configuration..."
+echo_success "Network configuration applied successfully!"
+echo_info "Static IP configured: $STATIC_IP on interface $INTERFACE"
+echo_warning "⚠️  Server will reboot in 15 seconds to activate new network configuration"
+echo_info "Press Enter to reboot immediately..."
 
-# Ensure systemd-networkd is running and enabled
-echo_info "Ensuring systemd-networkd service is properly configured..."
-systemctl enable systemd-networkd
-systemctl start systemd-networkd
+# Countdown and reboot
+for i in {15..1}; do
+    echo -n "Reboot in $i seconds... "
+    read -t 1 -n 1 input 2>/dev/null
+    if [ $? -eq 0 ]; then
+        echo
+        echo_info "Rebooting immediately..."
+        reboot
+        exit 0
+    fi
+    echo "($i remaining)"
+done
 
-# Wait for systemd-networkd to start properly
-sleep 2
-
-# Try to reload systemd-networkd first
-echo_info "Attempting systemd-networkd reload..."
-if systemctl is-active --quiet systemd-networkd; then
-    systemctl reload systemd-networkd 2>/dev/null || true
-    sleep 2
-fi
-
-# Apply netplan configuration
-netplan apply
-
-# Give network time to settle
-sleep 5
-
-echo_success "Network configuration applied"
-
-echo_success "Network setup complete!"
-echo_info "You should now be able to reconnect to this server using the static IP: $STATIC_IP"
-echo_info "Run: ssh monitor@$STATIC_IP"
-echo_info "If connection fails, verify network settings and try a VM reboot if needed."
-echo_warning "⚠️  After successful reconnection, run Ansible deployment with: ansible-playbook deployment.yml"
-
+echo_info "Rebooting now to activate static IP configuration..."
+reboot
 exit 0
