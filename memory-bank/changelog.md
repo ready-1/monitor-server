@@ -5,6 +5,12 @@ Changelog maintained with git commit indexing for traceability.
 
 ## [Unreleased]
 
+### Stage Tracking
+- **Stage 1 branch created** [current]
+  - Branch `stage-1-network-setup` established from main
+  - Moved `setup_network.sh` to `scripts/` directory for organization
+  - Ready for enhanced network configuration script development
+
 ## [2025-10-15]
 
 ### Added
