@@ -6,12 +6,14 @@ Changelog maintained with git commit indexing for traceability.
 ## [Unreleased]
 
 ### Stage Tracking
-- **Stage 1 testing preparation complete** [6f2ed0c]
-  - Cleaned up script to focus on interactive configuration only
-  - Removed all active network setup code for safe testing
-  - Maintained prompt logic and defaults file support
-  - Ready for VM testing with password SSH access
-  - All system modification code safely commented out until testing complete
+- **Stage 1 core network functionality complete** [602fa92]
+  - Interactive prompting system fully functional and VM-tested
+  - Package installation logic restored and integrated
+  - Network interface detection implemented with safety checks
+  - Complete netplan static IP configuration added with backups
+  - SSH relaxation removed for cleaner broadcast flypack deployment
+  - Full network configuration pipeline ready for testing
+  - Script atomic growth managed within discipline (61 lines added total)
 
 ## [2025-10-15]
 
