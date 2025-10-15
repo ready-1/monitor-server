@@ -115,3 +115,64 @@ apt install -y $APT_OPTIONS \
     sudo
 
 echo_success "Network dependencies installed"
+
+# Only add output functions if not already present (later steps need them)
+if ! [ -n "$(declare -f echo_info 2>/dev/null)" ]; then
+    # Colors for output
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m' # No Color
+
+    echo_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+    echo_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+    echo_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+    echo_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+    # Trap for cleanup on error
+    cleanup() {
+        if [ $? -ne 0 ]; then
+            echo_error "Setup failed. System may be in inconsistent state."
+            echo_warning "You may need to manually verify network connectivity before retrying."
+            exit 1
+        fi
+    }
+    trap cleanup EXIT
+fi
+
+# Step 2: Detect network interface
+echo_info "Detecting primary network interface..."
+INTERFACE=$(ip -br a | grep -v lo | grep UP | head -1 | awk '{print $1}')
+
+if [ -z "$INTERFACE" ]; then
+    echo_error "Could not detect network interface"
+    exit 1
+fi
+
+echo_info "Primary interface detected: $INTERFACE"
+
+# Step 3: Backup existing network configuration
+echo_info "Backing up existing network configuration..."
+cp /etc/netplan/00-installer-config.yaml /etc/netplan/00-installer-config.yaml.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+
+# Step 4: Create new netplan configuration
+echo_info "Creating static IP netplan configuration..."
+cat > /etc/netplan/01-static.yaml << EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    $INTERFACE:
+      dhcp4: no
+      addresses:
+        - $STATIC_IP/$NETMASK
+      routes:
+        - to: default
+          via: $GATEWAY
+          metric: 100
+      nameservers:
+        addresses: [$(echo $DNS_SERVERS | sed 's/,/","/g' | sed 's/^/"/;s/$/"/')]
+EOF
+
+echo_success "Netplan configuration created"
