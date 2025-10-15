@@ -195,24 +195,29 @@ fi
 
 echo_success "Netplan syntax is valid"
 
+echo
 echo_success "Network configuration applied successfully!"
 echo_info "Static IP configured: $STATIC_IP on interface $INTERFACE"
+echo
+
 echo_warning "⚠️  Server will reboot in 15 seconds to activate new network configuration"
 echo_info "Press Enter to reboot immediately..."
+echo
 
-# Countdown and reboot
+# Disable cleanup trap for reboot (prevents false failure messages)
+trap '' EXIT
+
+# Clean countdown display
 for i in {15..1}; do
-    echo -n "Reboot in $i seconds... "
+    printf "\rReboot in %2d seconds... Press Enter to reboot immediately" "$i"
     read -t 1 -n 1 input 2>/dev/null
     if [ $? -eq 0 ]; then
         echo
         echo_info "Rebooting immediately..."
         reboot
-        exit 0
     fi
-    echo "($i remaining)"
 done
+echo
 
-echo_info "Rebooting now to activate static IP configuration..."
+echo_success "Rebooting now to activate static IP configuration..."
 reboot
-exit 0
