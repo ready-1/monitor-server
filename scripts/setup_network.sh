@@ -22,10 +22,10 @@ CONFIG_FILE="$(dirname "$0")/network-config.defaults"
 
 # Network configuration (interactive with optional defaults file)
 if [ -f "$CONFIG_FILE" ]; then
-    echo_info "Loading defaults from $CONFIG_FILE..."
+    echo "Loading defaults from $CONFIG_FILE..."
     source "$CONFIG_FILE" 2>/dev/null || true
 else
-    echo_info "No defaults file found at $CONFIG_FILE - proceeding with interactive setup"
+    echo "No defaults file found at $CONFIG_FILE - proceeding with interactive setup"
 fi
 
 # Function to prompt with optional default
@@ -50,8 +50,8 @@ prompt_with_default() {
 }
 
 # Interactive network configuration
-echo_info "Network Configuration (press Enter to keep defaults, or enter new values)"
-echo_info "Leave blank to skip validation (will be tested later)"
+echo "Network Configuration (press Enter to keep defaults, or enter new values)"
+echo "Leave blank to skip validation (will be tested later)"
 
 prompt_with_default "STATIC_IP" "Enter static IP address"
 prompt_with_default "NETMASK" "Enter netmask (default 24)"
@@ -59,87 +59,63 @@ prompt_with_default "NETMASK" "Enter netmask (default 24)"
 prompt_with_default "GATEWAY" "Enter gateway IP"
 prompt_with_default "DNS_SERVERS" "Enter DNS servers (comma-separated)"
 
-# Provide defaults for SSH if not set
-if [ -z "$SSH_PUBLIC_KEY" ]; then
-    SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAlpoxkVdvq3DjLp5kyVn2N7sNb4Lcr2LZTvRkIaZI/b monitor's general ed25519 ID"
-fi
+echo "Network Configuration Summary:"
+echo "  Static IP: $STATIC_IP/$NETMASK"
+echo "  Gateway: $GATEWAY"
+echo "  DNS Servers: $DNS_SERVERS"
+echo "  SSH Public Key: ${SSH_PUBLIC_KEY:0:50}..."
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-echo_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-echo_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-echo_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
-echo_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-
-# Trap for cleanup on error
-cleanup() {
-    if [ $? -ne 0 ]; then
-        echo_error "Setup failed. System may be in inconsistent state."
-        echo_warning "You may need to manually verify network connectivity before retrying."
-        exit 1
-    fi
-}
-trap cleanup EXIT
-
-echo_info "Starting comprehensive network setup for Monitor Server..."
-echo_info "Static IP: $STATIC_IP/$NETMASK"
-echo_info "Gateway: $GATEWAY"
-
-# Step 1: Update package lists and install required network packages
-echo_info "Installing network dependencies..."
-
-# Fix clock sync issues that can prevent apt from working
-echo_info "Synchronizing system clock..."
-apt install -y systemd-timesyncd
-timedatectl set-ntp true
-
-# Wait for NTP to sync
-sleep 3
-
-# Check if clock is now roughly synced (within a day)
-CURRENT_TIME=$(date +%s)
-EXPECTED_TIME=$(curl -s --max-time 5 http://worldtimeapi.org/api/timezone/America/Los_Angeles.txt 2>/dev/null | grep unixtime | cut -d'=' -f2 || echo "")
-
-if [ -n "$EXPECTED_TIME" ]; then
-    TIME_DIFF=$((CURRENT_TIME - EXPECTED_TIME))
-    TIME_DIFF=${TIME_DIFF#-}  # Absolute value
-
-    if [ "$TIME_DIFF" -gt 86400 ]; then  # More than 24 hours off
-        echo_warning "System clock appears to be significantly off - will use relaxed apt validation"
-        APT_OPTIONS="-o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false"
-    else
-        echo_success "System clock appears synchronized"
-        APT_OPTIONS=""
-    fi
-else
-    echo_warning "Could not verify clock sync - using relaxed apt validation"
-    APT_OPTIONS="-o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false"
-fi
-
-# Update package lists with relaxed validation if needed
-apt update $APT_OPTIONS
-
-# Install complete netplan ecosystem
-apt install -y $APT_OPTIONS \
-    netplan.io \
-    nplan \
-    network-manager \
-    iproute2 \
-    dnsutils \
-    curl \
-    wget \
-    openssh-server \
-    openssh-client \
-    whois \
-    ufw \
-    sudo
-
-echo_success "Network dependencies installed"
+echo "Configuration complete - ready for network setup (currently testing interactive features only)"
+exit 0
+# echo_info "Installing network dependencies..."
+#
+# # Fix clock sync issues that can prevent apt from working
+# echo_info "Synchronizing system clock..."
+# apt install -y systemd-timesyncd
+# timedatectl set-ntp true
+#
+# # Wait for NTP to sync
+# sleep 3
+#
+# # Check if clock is now roughly synced (within a day)
+# CURRENT_TIME=$(date +%s)
+# EXPECTED_TIME=$(curl -s --max-time 5 http://worldtimeapi.org/api/timezone/America/Los_Angeles.txt 2>/dev/null | grep unixtime | cut -d'=' -f2 || echo "")
+#
+# if [ -n "$EXPECTED_TIME" ]; then
+#     TIME_DIFF=$((CURRENT_TIME - EXPECTED_TIME))
+#     TIME_DIFF=${TIME_DIFF#-}  # Absolute value
+#
+#     if [ "$TIME_DIFF" -gt 86400 ]; then  # More than 24 hours off
+#         echo_warning "System clock appears to be significantly off - will use relaxed apt validation"
+#         APT_OPTIONS="-o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false"
+#     else
+#         echo_success "System clock appears synchronized"
+#         APT_OPTIONS=""
+#     fi
+# else
+#     echo_warning "Could not verify clock sync - using relaxed apt validation"
+#     APT_OPTIONS="-o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false"
+# fi
+#
+# # Update package lists with relaxed validation if needed
+# apt update $APT_OPTIONS
+#
+# # Install complete netplan ecosystem
+# apt install -y $APT_OPTIONS \
+#     netplan.io \
+#     nplan \
+#     network-manager \
+#     iproute2 \
+#     dnsutils \
+#     curl \
+#     wget \
+#     openssh-server \
+#     openssh-client \
+#     whois \
+#     ufw \
+#     sudo
+#
+# echo_success "Network dependencies installed"
 
 # Step 1.5: Temporarily relax SSH configuration for setup
 echo_info "Temporarily relaxing SSH configuration for initial setup..."
