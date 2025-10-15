@@ -210,18 +210,19 @@ trap '' EXIT
 clear
 
 # Clean countdown display
+echo_info "Press Enter to reboot immediately, or wait for automatic countdown..."
 for i in {15..1}; do
-    printf "\r%-${COLUMNS}s" "Reboot in $i seconds... Press Enter to reboot immediately                  "
+    printf "\rReboot in %2d seconds... " "$i"
     read -t 1 -n 1 input 2>/dev/null
     if [ $? -eq 0 ]; then
         echo
         echo_info "Rebooting immediately..."
         sleep 2
         reboot
-        exit 0
     fi
 done
 echo
 
 echo_success "Rebooting now to activate static IP configuration..."
+sleep 1
 reboot
