@@ -29,9 +29,9 @@
     dest: /etc/prometheus/prometheus.yml
     owner: prometheus
     group: prometheus
-    mode: '0640'
+    mode: '0644'
     validate: 'promtool check config %s'
-  notify: restart_prometheus
+    notify: restart_prometheus
 
 - name: Create Prometheus web config for basic auth
   template:
@@ -39,7 +39,7 @@
     dest: /etc/prometheus/web.yml
     owner: prometheus
     group: prometheus
-    mode: '0640'
+    mode: '0644'
 
 - name: Ensure Prometheus service override directory exists
   file:
