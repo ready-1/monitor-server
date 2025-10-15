@@ -1,0 +1,50 @@
+# Netowrk Monitoring Project
+
+## Project Scope
+This project is to develope an ansible playbook that will implement a network monitoring server.
+
+### In Scope
+- Basic server config
+- Server network config via user executed script
+- Docker installation
+- Container installation
+- Container configuration
+- Application configuration
+- Testing of server configs and application functionality
+- Security hardening
+- Container networking
+- Container storage
+- Server backup configuration
+
+### Out of Scope
+- Production Network management
+
+## Project Assumptions
+- There will be a fresh Debian bookworm instaallation running on a Parallels VM
+- The user will have access to the server via SSH
+
+## Project Deliverables
+- Working Debian server
+- Cockpit installed as a system service
+- Docker containers installed, networked and providing valid working health checks
+- The following functions provided to the user:
+    - Simple static landing page
+    - SNMP, ICMP, TCP, UDP, REST data collection provided by Prometheus
+    - Time series data stored in InfluxDB
+    - Dashboards provided by Grafana
+    - Network device orchestration/automation provided by Ansible
+    - Orchestration/Automation user interface provided by Flask (or similar) responsive mobile first web site
+    - All web assets served locally with no reliance on a CDN
+
+## Development Environment
+- IDE will be Cline.bot in VSCode
+
+## Project Rules (non-negotiable)
+- Development will be in atomic stages.  No big leaps of faith.
+- Each stage will be passing before proceeding to the next.
+- Cline's memory store will be used consistently
+- git commits will be atomic.  every change will be commited with verbose commit messages
+- each stage will be its own branch
+- each iterative change will use the analyze->research->plan->code->test cycle
+- the LLM agent will be responsible for prompting the user to adhere to all guidelines
+
