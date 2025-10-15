@@ -1,6 +1,9 @@
 # Local Adds
 .vault_password
 
+# Network Configuration (user-specific)
+scripts/network-config.defaults
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
