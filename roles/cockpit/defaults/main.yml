@@ -8,7 +8,7 @@ cockpit_packages:
 
 # Service configuration
 cockpit_service_name: cockpit.socket
-cockpit_port: 9090
+cockpit_port: 9092
 
 # UFW configuration
 cockpit_ufw_rule: allow

@@ -1,0 +1,8 @@
+---
+# handlers/main.yml for snmp-exporter role
+
+- name: Restart blackbox-exporter
+  systemd:
+    name: prometheus-blackbox-exporter
+    state: restarted
+    daemon_reload: yes

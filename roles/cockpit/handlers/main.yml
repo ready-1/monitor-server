@@ -2,6 +2,19 @@
 # handlers/main.yml for cockpit role
 
 - name: restart cockpit
-  service:
-    name: cockpit
+  systemd:
+    name: cockpit.socket
     state: restarted
+    daemon_reload: yes
+
+- name: reload cockpit socket
+  systemd:
+    name: cockpit.socket
+    state: reloaded
+    daemon_reload: yes
+
+- name: restart cockpit socket
+  systemd:
+    name: cockpit.socket
+    state: restarted
+    daemon_reload: yes

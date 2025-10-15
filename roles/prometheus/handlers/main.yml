@@ -1,0 +1,14 @@
+---
+# handlers/main.yml for prometheus role
+
+- name: Reload prometheus
+  systemd:
+    name: prometheus
+    state: reloaded
+
+- name: Restart prometheus
+  systemd:
+    name: prometheus
+    state: restarted
+    daemon_reload: yes
+  listen: restart_prometheus

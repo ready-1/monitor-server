@@ -26,7 +26,35 @@
     update_cache: yes
   notify: restart cockpit
 
-- name: Enable and start Cockpit service
+- name: Create cockpit socket directory for overrides
+  file:
+    path: /etc/systemd/system/cockpit.socket.d
+    state: directory
+    mode: '0755'
+  when: not ansible_check_mode
+
+- name: Configure Cockpit socket to listen on custom port
+  template:
+    src: socket.override.conf.j2
+    dest: /etc/systemd/system/cockpit.socket.d/port.conf
+    mode: '0644'
+  when: not ansible_check_mode
+  notify: restart cockpit socket
+
+- name: Stop existing cockpit service (port conflict resolution)
+  systemd:
+    name: cockpit.socket
+    state: stopped
+    enabled: no
+  when: not ansible_check_mode
+  ignore_errors: yes
+
+- name: Reload systemd daemon (for cockpit socket override)
+  systemd:
+    daemon_reload: yes
+  when: not ansible_check_mode
+
+- name: Enable and start Cockpit service on new port
   systemd:
     name: cockpit.socket
     state: started
@@ -38,16 +66,16 @@
     msg: "Cockpit service would be enabled and started"
   when: ansible_check_mode
 
-- name: Allow Cockpit through UFW
+- name: Allow Cockpit through UFW on new port
   ufw:
     rule: allow
-    port: '9090'
+    port: '{{ cockpit_port }}'
     proto: tcp
   when: not ansible_check_mode
 
 - name: Check if Cockpit would be allowed through UFW (check mode)
   debug:
-    msg: "Cockpit would be allowed through UFW on port 9090"
+    msg: "Cockpit would be allowed through UFW on port {{ cockpit_port }}"
   when: ansible_check_mode
 
 - name: Include validation tasks

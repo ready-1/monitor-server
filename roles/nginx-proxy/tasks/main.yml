@@ -124,17 +124,12 @@
     msg: "Nginx service would be enabled and restarted"
   when: ansible_check_mode
 
-- name: Ensure Nginx service is enabled and started
+- name: Reload Nginx service after configuration changes
   systemd:
     name: nginx
-    state: started
-    enabled: yes
+    state: reloaded
+  ignore_errors: yes
   when: not ansible_check_mode
-
-- name: Simulate ensuring Nginx service is enabled and started (check mode)
-  debug:
-    msg: "Nginx service would be enabled and started"
-  when: ansible_check_mode
 
 - name: Allow HTTP through UFW
   ufw:

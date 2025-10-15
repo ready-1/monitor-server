@@ -1,0 +1,19 @@
+[Unit]
+Description=InfluxDB is an open-source, distributed, time series database
+Documentation=https://docs.influxdata.com/influxdb/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Restart=always
+RestartSec=5
+User=influxdb
+Group=influxdb
+
+# Override environment variables
+Environment="INFLUXD_HTTP_BIND_ADDRESS=:8086"
+Environment="INFLUXD_LOG_LEVEL=info"
+Environment="INFLUXD_DATA_DIR=/var/lib/influxdb/data"
+Environment="INFLUXD_META_DIR=/var/lib/influxdb/meta"
+Environment="INFLUXD_HTTP_MAX_BODY_SIZE=268435456"
+Environment="INFLUXD_HTTP_IDLE_TIMEOUT=30000000000"

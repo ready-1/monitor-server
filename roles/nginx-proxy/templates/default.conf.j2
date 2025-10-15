@@ -15,20 +15,50 @@ server {
 
     # Add SSL parameters here
 
+    # Prometheus proxy - simple and reliable
+    location /prometheus/ {
+        proxy_pass http://127.0.0.1:9091/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $server_name;
+    }
+
+    location /prometheus {
+        return 301 /prometheus/;
+    }
+
+    # Cockpit proxy - simple and reliable
+    location /cockpit/ {
+        proxy_pass http://127.0.0.1:9092/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $server_name;
+    }
+
+    location /cockpit {
+        return 301 /cockpit/;
+    }
+
+    # InfluxDB proxy (must come before root location)
+    location /influxdb {
+        proxy_pass http://127.0.0.1:8086;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $server_name;
+        rewrite ^/influxdb(/.*)$ $1 break;
+    }
+
+    # Root location (catch-all for website and cockpit)
     location / {
         root /usr/share/nginx/html;
         index index.html index.htm;
     }
-
-    # Add proxy_pass configurations here
-    # Example:
-    # location /app1 {
-    #     proxy_pass http://localhost:8080;
-    #     proxy_set_header Host $host;
-    #     proxy_set_header X-Real-IP $remote_addr;
-    # }
-
-    # Cockpit is accessed directly at :9090 - no proxy needed
 
     error_page 404 /404.html;
     location = /404.html {

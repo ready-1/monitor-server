@@ -1,0 +1,8 @@
+---
+# handlers/main.yml for influxdb role
+
+- name: Restart influxdb
+  systemd:
+    name: influxdb
+    state: restarted
+    daemon_reload: yes

@@ -1,0 +1,8 @@
+---
+# handlers/main.yml for snmp-exporter role
+
+- name: Restart snmp-exporter
+  systemd:
+    name: prometheus-snmp-exporter
+    state: restarted
+    daemon_reload: yes

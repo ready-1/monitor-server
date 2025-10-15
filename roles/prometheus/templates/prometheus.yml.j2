@@ -1,0 +1,78 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  scrape_timeout: 10s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+
+  # SNMP Exporter for network devices
+  - job_name: 'snmp'
+    static_configs:
+      - targets: ['172.30.10.3:161']
+        labels:
+          device: 'switch-1'
+      - targets: ['172.30.10.4:161']
+        labels:
+          device: 'switch-2'
+    params:
+      module: [if_mib]
+    scrape_interval: 300s
+    scrape_timeout: 60s
+
+  # Blackbox exporter for HTTP endpoints
+  - job_name: 'blackbox_http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - https://github.com
+        - http://localhost:9090
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
+
+  # Blackbox exporter for ICMP ping
+  - job_name: 'blackbox_icmp'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+        - 8.8.8.8
+        - 1.1.1.1
+        - localhost
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
+
+remote_write:
+  - url: "http://localhost:8086/api/v1/write?org=prometheus&bucket=prometheus_metrics"
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 200
+      capacity: 5000
+    write_relabel_configs:
+      - source_labels: [__name__]
+        target_label: __name__

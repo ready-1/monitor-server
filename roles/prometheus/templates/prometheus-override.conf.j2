@@ -1,0 +1,25 @@
+[Unit]
+Description=Monitoring system and time series database
+Documentation=https://prometheus.io/docs/introduction/overview/
+After=network-online.target influxdb.service
+Wants=influxdb.service
+
+[Service]
+Type=exec
+Restart=always
+RestartSec=5
+User=prometheus
+Group=prometheus
+
+# Override default arguments with basic auth - use localhost only
+ExecStart=
+    ExecStart=/usr/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/var/lib/prometheus/ \
+  --web.listen-address=127.0.0.1:9091 \
+  --web.config.file=/etc/prometheus/web.yml \
+  --storage.tsdb.retention.time=90d \
+  --web.external-url=https://{{ ansible_host }}/prometheus
+
+[Install]
+WantedBy=multi-user.target

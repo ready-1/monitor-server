@@ -1,0 +1,92 @@
+---
+# tasks/main.yml for influxdb role
+
+- name: Install required packages
+  apt:
+    name:
+      - apt-transport-https
+      - curl
+      - gnupg2
+      - lsb-release
+    state: present
+    update_cache: yes
+
+- name: Add InfluxData Repository Key (modern approach)
+  apt_key:
+    url: https://repos.influxdata.com/influxdata-archive_compat.key
+    keyring: /usr/share/keyrings/influxdata-archive-keyring.gpg
+    state: present
+
+- name: Add InfluxData Repository
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/influxdata-archive-keyring.gpg] https://repos.influxdata.com/debian stable main"
+    state: present
+    filename: influxdata
+
+- name: Update apt cache after adding repository
+  apt:
+    update_cache: yes
+
+- name: Install InfluxDB
+  apt:
+    name: influxdb2
+    state: present
+
+- name: Ensure InfluxDB service directory exists
+  file:
+    path: /etc/systemd/system/influxdb.service.d
+    state: directory
+    mode: '0755'
+
+- name: Configure InfluxDB service overrides
+  template:
+    src: influxdb-override.conf.j2
+    dest: /etc/systemd/system/influxdb.service.d/override.conf
+    mode: '0644'
+  notify: Restart influxdb
+
+- name: Start and enable InfluxDB service
+  systemd:
+    name: influxdb
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Wait for InfluxDB to be ready
+  wait_for:
+    host: localhost
+    port: 8086
+    timeout: 60
+
+- name: Set InfluxDB token variable
+  set_fact:
+    influxdb_token_actual: "{{ influxdb_token | default('') }}"
+
+- name: Create initial setup (if no token exists)
+  block:
+    - name: Create initial organization and get token
+      command: >
+        influx setup
+        --username admin
+        --password admin123
+        --org prometheus
+        --bucket prometheus_metrics
+        --host http://localhost:8086
+        --retention 0
+        --force
+      register: influx_setup
+      when: influxdb_token_actual == ''
+      changed_when: false
+      failed_when: influx_setup.rc != 0
+
+    - name: Extract token from setup output
+      set_fact:
+        influxdb_token_actual: "{{ influx_setup.stdout | regex_findall('Token: ([^\\n]+)') | first | default('') }}"
+      when: influxdb_token_actual == ''
+  when: influxdb_token is not defined
+
+- name: Include validation tasks
+  include_tasks: validate.yml
+  tags:
+    - validate
+    - always

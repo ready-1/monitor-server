@@ -22,7 +22,12 @@
     - basic-utilities
     - cockpit
     - nginx-proxy
-    - website
+    - website-deploy
+    - influxdb
+    - node-exporter
+    - snmp-exporter
+    - blackbox-exporter
+    - prometheus
 
   post_tasks:
     - name: Display deployment summary
@@ -32,6 +37,7 @@
           Server: {{ ansible_hostname }}
           IP: {{ ansible_host }}
           Cockpit UI: https://{{ ansible_host }}:9090
+          Prometheus Dashboard: https://{{ ansible_host }}/prometheus
           Web Dashboard: https://{{ ansible_host }}
           SSH: ssh monitor@{{ ansible_host }}
 
@@ -55,7 +61,27 @@
       tags: [validate]
 
     - name: Validate website deployment
-      include_tasks: roles/website/tasks/validate.yml
+      include_tasks: roles/website-deploy/tasks/validate.yml
+      tags: [validate]
+
+    - name: Validate InfluxDB installation
+      include_tasks: roles/influxdb/tasks/validate.yml
+      tags: [validate]
+
+    - name: Validate Node Exporter installation
+      include_tasks: roles/node-exporter/tasks/validate.yml
+      tags: [validate]
+
+    - name: Validate SNMP Exporter installation
+      include_tasks: roles/snmp-exporter/tasks/validate.yml
+      tags: [validate]
+
+    - name: Validate Blackbox Exporter installation
+      include_tasks: roles/blackbox-exporter/tasks/validate.yml
+      tags: [validate]
+
+    - name: Validate Prometheus installation
+      include_tasks: roles/prometheus/tasks/validate.yml
       tags: [validate]
 
     - name: Final connectivity test
@@ -74,3 +100,29 @@
       debug:
         msg: "🎉 All services deployed and validated successfully!"
       when: final_web_test is defined and final_web_test.status == 200
+
+    - name: Final system reloads
+      block:
+        - name: Reload systemd daemons (services and units)
+          systemd:
+            daemon_reload: yes
+          become: yes
+          changed_when: false
+          tags: [always]
+
+        - name: Reload nginx configuration after all changes
+          systemd:
+            name: nginx
+            state: reloaded
+          become: yes
+          ignore_errors: yes
+          changed_when: false
+          tags: [always]
+
+    - name: Display deployment completion timestamp
+      debug:
+        msg: "⏰ Deployment completed at {{ ansible_date_time.iso8601 }}"
+      tags: [always]
+
+# NOTE: Always reload systemd daemon configurations and services after unit file changes
+#       Required for: nginx, prometheus, influxdb, snmp-exporter, and other systemd-managed services
