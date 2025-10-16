@@ -1,0 +1,31 @@
+---
+# Main Provisioning Playbook: Stage 2 Flypack Server Setup
+# Usage: ansible-playbook playbooks/provision_flypack.yml -l flypack-01
+
+- name: Provision Flypack Servers
+  hosts: flypack_servers
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Confirm playbook start
+      debug:
+        msg: |
+          ================================================================
+          STARTING STAGE 2: Flypack Server Provisioning
+          Target: {{ inventory_hostname }} ({{ ansible_host }})
+          Role: server_qa (Stage 1 validation)
+          ===============================================================
+
+  roles:
+    - server_qa
+
+  post_tasks:
+    - name: Provisioning complete message
+      debug:
+        msg: |
+          ================================================================
+          Stage 2 server_qa validation: {{ ansible_hostname }}
+          Status: Check above output for results
+          Next: If PASSED, proceed with base_server, docker_host roles
+          ===============================================================
