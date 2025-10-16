@@ -1,0 +1,30 @@
+---
+# Test Playbook: Server QA Role Validation
+# Used to test the server_qa role in isolation during development
+
+- name: Test Server QA Role
+  hosts: development  # Use localhost for development testing
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Display test run information
+      debug:
+        msg: |
+          =======================================
+          Testing server_qa role on {{ ansible_hostname }}
+          Stage 1 validation will now execute
+          =======================================
+
+  roles:
+    - server_qa
+
+  post_tasks:
+    - name: Test run completed
+      debug:
+        msg: |
+          =======================================
+          server_qa role test completed
+          Check above output for validation results
+          =======================================
+      when: ansible_playbook_python is defined

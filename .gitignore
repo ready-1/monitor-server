@@ -215,3 +215,10 @@ __marimo__/
 # Ansible Vault
 .vault_password
 *.vault_backup
+
+# Ansible vault files (containing encrypted passwords)
+ansible/vault_pass.txt
+ansible/inventory/group_vars/*/vault.yml
+
+# Ansible backup files
+ansible/inventory/group_vars/*/*.backup

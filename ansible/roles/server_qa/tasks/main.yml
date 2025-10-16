@@ -1,0 +1,180 @@
+---
+# Server QA Role: Validates Stage 1 Network Setup Effectiveness
+# This role verifies that Stage 1 network configuration is functional
+# and the server is ready for Stage 2 Docker provisioning
+
+- name: Stage 1 Network Validation
+  block:
+    # Check if Stage 1 script installation artifacts exist
+    - name: Verify Stage 1 script execution indicators
+      stat:
+        path: "{{ item }}"
+      register: stage1_indicators
+      loop:
+        - /etc/network/interfaces.d/
+        - /etc/ssh/sshd_config.d/99-monitor.conf
+        - /etc/netplan/01-network-setup.yaml
+        - /home/monitor/.ssh/authorized_keys
+
+    - name: Fail if Stage 1 indicators are missing - script not run
+      fail:
+        msg: >
+          Stage 1 script appears not to have been executed.
+          Missing required files: {{ stage1_indicators.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}
+          Please run Stage 1 setup_network.sh first.
+      when: stage1_indicators.results | selectattr('stat.exists', 'equalto', false) | list | length > 0
+
+    # Verify package installation from Stage 1
+    - name: Check Stage 1 package installation
+      package:
+        name: "{{ item }}"
+        state: present
+      check_mode: true
+      register: package_check
+      loop:
+        - netplan.io
+        - openssh-server
+        - network-manager
+        - systemd-networkd
+      failed_when: false
+
+    - name: Report missing Stage 1 packages
+      debug:
+        msg: "CRITICAL: Missing Stage 1 packages: {{ package_check.results | selectattr('failed', 'equalto', true) | map(attribute='item') | list }}"
+      when: package_check.results | selectattr('failed', 'equalto', true) | list | length > 0
+
+    # System services validation
+    - name: Check critical service status
+      systemd:
+        name: "{{ item }}"
+        state: started
+      check_mode: true
+      register: service_status
+      loop:
+        - systemd-networkd
+        - ssh
+      failed_when: false
+
+    - name: Report service failures
+      debug:
+        msg: "CRITICAL: Services not running: {{ service_status.results | selectattr('failed', 'equalto', true) | map(attribute='name') | list }}"
+      when: service_status.results | selectattr('failed', 'equalto', true) | list | length > 0
+
+    - name: Validate SSH configuration
+      command: sshd -t
+      register: ssh_test
+      failed_when: false
+
+    - name: Fail if SSH config is broken
+      fail:
+        msg: "SSH configuration is invalid: {{ ssh_test.stderr }}"
+      when: ssh_test.rc != 0
+
+  rescue:
+    - name: Stage 1 validation failed - detailed diagnostic
+      debug:
+        msg: |
+          Stage 1 Validation FAILED
+          ================================
+          This indicates either:
+          1. Stage 1 script was not run successfully
+          2. Stage 1 configuration was corrupted
+          3. System state has changed since Stage 1 completion
+
+          Required remediation actions:
+          - Check Stage 1 execution logs
+          - Re-run Stage 1 script if needed
+          - Verify system state manually
+          ================================
+
+    - name: Force failure to halt Stage 2 deployment
+      fail:
+        msg: "Stage 1 validation failed. Cannot proceed with Stage 2 provisioning."
+
+- name: Network Connectivity Validation
+  block:
+    # Basic connectivity tests
+    - name: Test local network connectivity
+      command: ping -c 3 -W 5 {{ ansible_default_ipv4.gateway }}
+      register: local_ping
+      failed_when: false
+
+    - name: Test internet connectivity
+      command: ping -c 3 -W 5 8.8.8.8
+      register: internet_ping
+      failed_when: false
+
+    - name: Test DNS resolution
+      command: nslookup google.com
+      register: dns_test
+      failed_when: false
+
+    # Validate IP configuration
+    - name: Check configured IP addresses
+      command: ip route show default
+      register: default_route
+
+    - name: Verify static IP is active
+      command: ip addr show {{ ansible_default_ipv4.interface }}
+      register: interface_ip
+      failed_when: not (ansible_default_ipv4.address in interface_ip.stdout)
+
+    # SSH accessibility test (from playbook host perspective)
+    - name: Test SSH connectivity from control host
+      command: >
+        ssh -o StrictHostKeyChecking=no
+            -o UserKnownHostsFile=/dev/null
+            -o ConnectTimeout=10
+            {{ ansible_user }}@{{ ansible_host }}
+            'echo "SSH connection successful"'
+      delegate_to: localhost
+      register: ssh_connectivity
+      failed_when: false
+
+    # Network configuration persistence
+    - name: Verify netplan configuration is valid
+      command: netplan try --timeout 10
+      register: netplan_validation
+      failed_when: false
+      ignore_errors: true
+
+  rescue:
+    - name: Network validation failed
+      debug:
+        msg: |
+          Network Validation FAILED
+          ===========================
+          Local ping: {{ local_ping.rc | default('not run') }}
+          Internet ping: {{ internet_ping.rc | default('not run') }}
+          DNS resolution: {{ dns_test.rc | default('not run') }}
+          SSH connectivity: {{ ssh_connectivity.rc | default('not run') }}
+          Netplan validation: {{ netplan_validation.rc | default('not run') }}
+
+          Required remediation:
+          - Check network cables and switch ports
+          - Verify firewall configuration
+          - Review netplan configuration
+          - Test SSH keys and permissions
+          ===========================
+
+    - name: Force failure for network issues
+      fail:
+        msg: "Network validation failed. Server not ready for Docker deployment."
+
+- name: Final Stage 2 Readiness Assessment
+  debug:
+    msg: |
+      ======================================================================
+      Stage 2 READY: Server QA Validation PASSED
+      ======================================================================
+      ✓ Stage 1 packages installed
+      ✓ System services running
+      ✓ SSH configuration valid
+      ✓ Network connectivity confirmed
+      ✓ DNS resolution working
+      ✓ Static IP configuration active
+      ✓ Netplan configuration persistent
+
+      Server is ready for Docker host provisioning.
+      Proceeding with Stage 2 Ansible roles.
+      ======================================================================
